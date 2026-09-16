@@ -5,12 +5,12 @@ import {
   Get,
   HttpCode,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
 } from '@nestjs/common';
 import { AdminOnly } from '../auth/admin.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 import { CreateProductDto } from './dto/create-product.dto';
 import { AdminQueryProductsDto } from './dto/query-products.dto';
 import { UpdateProductDto, UpdateStockDto } from './dto/update-product.dto';
@@ -27,7 +27,7 @@ export class AdminProductsController {
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id', ParseIdPipe) id: number) {
     return this.products.findById(id);
   }
 
@@ -37,13 +37,13 @@ export class AdminProductsController {
   }
 
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductDto) {
+  update(@Param('id', ParseIdPipe) id: number, @Body() dto: UpdateProductDto) {
     return this.products.update(id, dto);
   }
 
   @Patch(':id/stock')
   updateStock(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIdPipe) id: number,
     @Body() { stock }: UpdateStockDto,
   ) {
     return this.products.updateStock(id, stock);
@@ -51,7 +51,7 @@ export class AdminProductsController {
 
   @Delete(':id')
   @HttpCode(204)
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id', ParseIdPipe) id: number) {
     return this.products.remove(id);
   }
 }

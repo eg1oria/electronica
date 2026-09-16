@@ -5,11 +5,11 @@ import {
   Get,
   HttpCode,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
 } from '@nestjs/common';
 import { AdminOnly } from '../auth/admin.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -24,6 +24,11 @@ export class AdminCategoriesController {
     return this.categories.findFlat();
   }
 
+  @Get(':id')
+  findOne(@Param('id', ParseIdPipe) id: number) {
+    return this.categories.findById(id);
+  }
+
   @Post()
   create(@Body() dto: CreateCategoryDto) {
     return this.categories.create(dto);
@@ -31,7 +36,7 @@ export class AdminCategoriesController {
 
   @Patch(':id')
   update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIdPipe) id: number,
     @Body() dto: UpdateCategoryDto,
   ) {
     return this.categories.update(id, dto);
@@ -39,7 +44,7 @@ export class AdminCategoriesController {
 
   @Delete(':id')
   @HttpCode(204)
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id', ParseIdPipe) id: number) {
     return this.categories.remove(id);
   }
 }

@@ -5,11 +5,11 @@ import {
   Get,
   HttpCode,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
 } from '@nestjs/common';
 import { AdminOnly } from '../auth/admin.decorator';
+import { ParseIdPipe } from '../common/pipes/parse-id.pipe';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/jwt.strategy';
 import { Role } from '../generated/prisma/client';
@@ -33,13 +33,13 @@ export class UsersController {
   }
 
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
+  update(@Param('id', ParseIdPipe) id: number, @Body() dto: UpdateUserDto) {
     return this.users.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+  remove(@Param('id', ParseIdPipe) id: number, @CurrentUser() user: AuthUser) {
     return this.users.remove(id, user.id);
   }
 }

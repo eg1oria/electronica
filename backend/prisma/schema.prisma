@@ -20,6 +20,8 @@ model User {
   passwordHash String
   name         String?
   role         Role     @default(MANAGER)
+  /// Увеличивается при смене пароля/роли — старые JWT становятся недействительными.
+  tokenVersion Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
