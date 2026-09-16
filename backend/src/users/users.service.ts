@@ -75,7 +75,9 @@ export class UsersService {
   }
 
   private async assertNotLastAdmin() {
-    const admins = await this.prisma.user.count({ where: { role: Role.ADMIN } });
+    const admins = await this.prisma.user.count({
+      where: { role: Role.ADMIN },
+    });
     if (admins <= 1) {
       throw new BadRequestException(
         'Нельзя удалить или понизить последнего администратора',

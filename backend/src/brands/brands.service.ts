@@ -42,7 +42,10 @@ export class BrandsService {
 
   async update(id: number, dto: UpdateBrandDto) {
     const current = await this.findById(id);
-    const updated = await this.prisma.brand.update({ where: { id }, data: dto });
+    const updated = await this.prisma.brand.update({
+      where: { id },
+      data: dto,
+    });
     if (dto.logo !== undefined && dto.logo !== current.logo) {
       await this.uploads.removeUnused([current.logo]);
     }

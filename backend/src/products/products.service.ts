@@ -1,9 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CategoriesService } from '../categories/categories.service';
 import { Paginated } from '../common/dto/pagination.dto';
-import { slugify } from '../common/slugify';
+import { uniqueSlug } from '../common/slugify';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UploadsService } from '../uploads/uploads.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import {
   AdminQueryProductsDto,
@@ -51,6 +56,7 @@ export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly categories: CategoriesService,
+    private readonly uploads: UploadsService,
   ) {}
 
   /** Каталог для покупателей — только опубликованные товары. */
@@ -84,11 +90,13 @@ export class ProductsService {
     return serialize(product);
   }
 
-  async create({ images = [], specs = [], ...dto }: CreateProductDto) {
+  async create({ images = [], specs = [], slug, ...dto }: CreateProductDto) {
+    assertDiscount(dto.price, dto.oldPrice);
+    await this.assertRelations(dto.categoryId, dto.brandId);
     const product = await this.prisma.product.create({
       data: {
         ...dto,
-        slug: dto.slug ?? slugify(dto.name),
+        slug: slug ?? (await uniqueSlug(dto.name, (s) => this.slugTaken(s))),
         images: { create: withPosition(images) },
         specs: { create: withPosition(specs) },
       },
@@ -98,6 +106,15 @@ export class ProductsService {
   }
 
   async update(id: number, { images, specs, ...dto }: UpdateProductDto) {
+    const current = await this.findById(id);
+    if (dto.price !== undefined || dto.oldPrice !== undefined) {
+      assertDiscount(
+        dto.price ?? current.price,
+        dto.oldPrice === undefined ? current.oldPrice : dto.oldPrice,
+      );
+    }
+    await this.assertRelations(dto.categoryId, dto.brandId);
+
     // Вложенные deleteMany + create выполняются Prisma в одной транзакции.
     const product = await this.prisma.product.update({
       where: { id },
@@ -112,6 +129,9 @@ export class ProductsService {
       },
       include: fullInclude,
     });
+    if (images) {
+      await this.uploads.removeUnused(current.images.map((i) => i.url));
+    }
     return serialize(product);
   }
 
@@ -125,15 +145,16 @@ export class ProductsService {
   }
 
   async remove(id: number) {
+    const product = await this.findById(id);
     await this.prisma.product.delete({ where: { id } });
+    await this.uploads.removeUnused(product.images.map((i) => i.url));
   }
 
   private async list(query: QueryProductsDto, base: Prisma.ProductWhereInput) {
-    const where: Prisma.ProductWhereInput = { ...base };
-    const and: Prisma.ProductWhereInput[] = [];
+    const and: Prisma.ProductWhereInput[] = [base];
 
-    if (query.search?.trim()) {
-      const search = query.search.trim();
+    if (query.search) {
+      const search = query.search;
       and.push({
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
@@ -149,7 +170,7 @@ export class ProductsService {
         where: { slug: query.categorySlug },
         select: { id: true },
       });
-      if (!category) return this.empty(query);
+      if (!category) return empty(query);
       and.push({
         categoryId: { in: await this.categories.descendantIds(category.id) },
       });
@@ -162,9 +183,9 @@ export class ProductsService {
       and.push(query.inStock ? { stock: { gt: 0 } } : { stock: 0 });
     }
     if (query.isFeatured != null) and.push({ isFeatured: query.isFeatured });
-    if (and.length) where.AND = and;
 
-    const [items, total] = await this.prisma.$transaction([
+    const where: Prisma.ProductWhereInput = { AND: and };
+    const [items, total] = await Promise.all([
       this.prisma.product.findMany({
         where,
         include: listInclude,
@@ -183,7 +204,42 @@ export class ProductsService {
     };
   }
 
-  private empty(query: QueryProductsDto): Paginated<never> {
-    return { items: [], total: 0, page: query.page, limit: query.limit };
+  private async slugTaken(slug: string) {
+    return !!(await this.prisma.product.findUnique({
+      where: { slug },
+      select: { id: true },
+    }));
   }
+
+  /** Понятная 400 вместо ошибки внешнего ключа. */
+  private async assertRelations(categoryId?: number, brandId?: number | null) {
+    const [category, brand] = await Promise.all([
+      categoryId === undefined
+        ? true
+        : this.prisma.category.findUnique({
+            where: { id: categoryId },
+            select: { id: true },
+          }),
+      brandId == null
+        ? true
+        : this.prisma.brand.findUnique({
+            where: { id: brandId },
+            select: { id: true },
+          }),
+    ]);
+    if (!category) throw new BadRequestException('Категория не найдена');
+    if (!brand) throw new BadRequestException('Бренд не найден');
+  }
+}
+
+function assertDiscount(price: number, oldPrice?: number | null) {
+  if (oldPrice != null && oldPrice <= price) {
+    throw new BadRequestException(
+      'Старая цена (oldPrice) должна быть больше текущей',
+    );
+  }
+}
+
+function empty(query: QueryProductsDto): Paginated<never> {
+  return { items: [], total: 0, page: query.page, limit: query.limit };
 }

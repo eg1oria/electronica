@@ -1,10 +1,16 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcryptjs';
-import { PrismaClient, Role } from '../src/generated/prisma/client';
+import { PrismaClient, Role } from './generated/prisma/client';
 
+/**
+ * Начальные данные: администратор из ADMIN_EMAIL/ADMIN_PASSWORD и демо-каталог.
+ * Идемпотентен — существующие записи не перезаписываются.
+ * Dev: `npm run db:seed`, в Docker: `node dist/seed.js`.
+ */
+if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL не задан');
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
 async function main() {
@@ -12,6 +18,9 @@ async function main() {
     process.env.ADMIN_EMAIL ?? 'admin@electronica.local'
   ).toLowerCase();
   const password = process.env.ADMIN_PASSWORD ?? 'admin12345';
+  if (password.length < 8) {
+    throw new Error('ADMIN_PASSWORD должен быть не короче 8 символов');
+  }
 
   // Пароль существующего админа не перезаписывается.
   await prisma.user.upsert({

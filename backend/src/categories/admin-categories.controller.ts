@@ -35,10 +35,7 @@ export class AdminCategoriesController {
   }
 
   @Patch(':id')
-  update(
-    @Param('id', ParseIdPipe) id: number,
-    @Body() dto: UpdateCategoryDto,
-  ) {
+  update(@Param('id', ParseIdPipe) id: number, @Body() dto: UpdateCategoryDto) {
     return this.categories.update(id, dto);
   }
 

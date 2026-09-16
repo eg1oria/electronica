@@ -9,13 +9,14 @@ export function validateEnv(config: Record<string, unknown>) {
   if (secret.length < 32) {
     errors.push('JWT_SECRET должен быть не короче 32 символов');
   }
-  if (
-    config.NODE_ENV === 'production' &&
-    secret === JWT_SECRET_PLACEHOLDER
-  ) {
+  if (config.NODE_ENV === 'production' && secret === JWT_SECRET_PLACEHOLDER) {
     errors.push('JWT_SECRET не изменён со значения из .env.example');
   }
-  if (config.PORT !== undefined && !/^\d+$/.test(String(config.PORT))) {
+  const port = config.PORT;
+  if (
+    port !== undefined &&
+    !/^\d+$/.test(typeof port === 'string' ? port : '')
+  ) {
     errors.push('PORT должен быть числом');
   }
 
