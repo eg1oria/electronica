@@ -1,18 +1,48 @@
 name: electronica
 
+# Разработка:  npm run db:up                (только БД на localhost:5434)
+# Всё в Docker: docker compose up -d --build (БД + API на localhost:4000)
+
 services:
   postgres:
     image: postgres:17-alpine
     container_name: electronica-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: electronica
-      POSTGRES_PASSWORD: electronica
-      POSTGRES_DB: electronica
+      POSTGRES_USER: ${POSTGRES_USER:-electronica}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-electronica}
+      POSTGRES_DB: ${POSTGRES_DB:-electronica}
     ports:
-      - '5434:5432'
+      - '127.0.0.1:5434:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    image: electronica-api
+    container_name: electronica-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-electronica}:${POSTGRES_PASSWORD:-electronica}@postgres:5432/${POSTGRES_DB:-electronica}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Задайте JWT_SECRET в .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@electronica.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+    ports:
+      - '${API_PORT:-4000}:4000'
+    volumes:
+      - uploads:/app/uploads
 
 volumes:
   pgdata:
+  uploads:
