@@ -1,7 +1,10 @@
 name: electronica
 
-# Разработка:  npm run db:up                (только БД на localhost:5434)
-# Всё в Docker: docker compose up -d --build (БД + API на localhost:4000)
+# Разработка:   npm run db:up                  (только БД на localhost:5434)
+# Всё в Docker: docker compose up -d --build   (БД + миграции + API на :4000)
+# Сид в Docker: docker compose exec api node dist/seed.js
+
+x-database-url: &database-url postgresql://${POSTGRES_USER:-electronica}:${POSTGRES_PASSWORD:-electronica}@postgres:5432/${POSTGRES_DB:-electronica}?schema=public
 
 services:
   postgres:
@@ -22,16 +25,31 @@ services:
       timeout: 5s
       retries: 10
 
-  api:
-    build: .
-    image: electronica-api
-    container_name: electronica-api
-    restart: unless-stopped
+  migrate:
+    build:
+      context: .
+      target: migrator
+    image: electronica-migrate
+    container_name: electronica-migrate
+    restart: 'no'
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-electronica}:${POSTGRES_PASSWORD:-electronica}@postgres:5432/${POSTGRES_DB:-electronica}?schema=public
+      DATABASE_URL: *database-url
+
+  api:
+    build:
+      context: .
+      target: runner
+    image: electronica-api
+    container_name: electronica-api
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: *database-url
       JWT_SECRET: ${JWT_SECRET:?Задайте JWT_SECRET в .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@electronica.local}
