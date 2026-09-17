@@ -10,10 +10,10 @@ import { CategoriesModule } from './categories/categories.module';
 import { validateEnv } from './config/env.validation';
 import { HealthController } from './health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
+import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UPLOAD_DIR, UPLOAD_URL_PREFIX } from './uploads/uploads.constants';
-import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -33,12 +33,12 @@ import { UsersModule } from './users/users.module';
     }),
     PrismaModule,
     AuthModule,
-    UsersModule,
     CategoriesModule,
     BrandsModule,
     ProductsModule,
     UploadsModule,
     BannersModule,
+    OrdersModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

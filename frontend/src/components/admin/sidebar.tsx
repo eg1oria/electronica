@@ -13,6 +13,7 @@ import {
   FolderIcon,
   LogoutIcon,
   MenuIcon,
+  ReceiptIcon,
   SlidesIcon,
   TagIcon,
 } from "../icons";
@@ -26,6 +27,7 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { href: "/admin", label: "Обзор", icon: DashboardIcon },
+  { href: "/admin/orders", label: "Заказы", icon: ReceiptIcon },
   { href: "/admin/products", label: "Товары", icon: BoxIcon },
   { href: "/admin/categories", label: "Категории", icon: FolderIcon },
   { href: "/admin/brands", label: "Бренды", icon: TagIcon },

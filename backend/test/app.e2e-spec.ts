@@ -32,6 +32,7 @@ describe('Shop API (e2e)', () => {
   });
 
   afterAll(async () => {
+    await prisma.order.deleteMany({ where: { items: { some: { sku } } } });
     await prisma.product.deleteMany({ where: { sku } });
     await app.close();
   });
@@ -123,5 +124,89 @@ describe('Shop API (e2e)', () => {
         categoryId: category.id,
       })
       .expect(409);
+  });
+
+  it('оформляет заказ по ценам из базы и возвращает остаток при отмене', async () => {
+    const category = await prisma.category.findFirstOrThrow();
+    const server = app.getHttpServer();
+    const orderSku = `${sku}-ORDER`;
+    const product = await prisma.product.create({
+      data: {
+        name: 'Товар для заказа',
+        slug: orderSku.toLowerCase(),
+        sku: orderSku,
+        description: '',
+        price: 1000,
+        stock: 3,
+        categoryId: category.id,
+      },
+    });
+    const order = {
+      customerName: 'Тест',
+      phone: '+7 700 000 00 00',
+      delivery: 'PICKUP',
+      payment: 'ON_DELIVERY',
+    };
+
+    try {
+      await request(server)
+        .post('/api/orders')
+        .send({ ...order, delivery: 'COURIER', items: [] })
+        .expect(400);
+
+      await request(server)
+        .post('/api/orders')
+        .send({ ...order, items: [{ productId: product.id, qty: 4 }] })
+        .expect(409);
+
+      // Цену передать нельзя — она берётся только из базы.
+      await request(server)
+        .post('/api/orders')
+        .send({
+          ...order,
+          items: [{ productId: product.id, qty: 1, price: 1 }],
+        })
+        .expect(400);
+
+      // Одинаковые позиции складываются в одну.
+      const placed = await request(server)
+        .post('/api/orders')
+        .send({
+          ...order,
+          items: [
+            { productId: product.id, qty: 1 },
+            { productId: product.id, qty: 1 },
+          ],
+        })
+        .expect(201);
+      expect(placed.body).toMatchObject({
+        status: 'NEW',
+        total: 2000,
+        items: [{ productId: product.id, qty: 2, price: 1000 }],
+      });
+      const stock = async () =>
+        (await prisma.product.findUniqueOrThrow({ where: { id: product.id } }))
+          .stock;
+      expect(await stock()).toBe(1);
+
+      await request(server).get('/api/admin/orders').expect(401);
+      await request(server)
+        .patch(`/api/admin/orders/${placed.body.id}`)
+        .auth(token, { type: 'bearer' })
+        .send({ status: 'CANCELLED' })
+        .expect(200);
+      expect(await stock()).toBe(3);
+
+      await request(server)
+        .patch(`/api/admin/orders/${placed.body.id}`)
+        .auth(token, { type: 'bearer' })
+        .send({ status: 'NEW' })
+        .expect(400);
+    } finally {
+      await prisma.order.deleteMany({
+        where: { items: { some: { sku: orderSku } } },
+      });
+      await prisma.product.delete({ where: { id: product.id } });
+    }
   });
 });

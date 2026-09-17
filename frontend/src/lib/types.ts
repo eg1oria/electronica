@@ -100,3 +100,46 @@ export type Banner = {
     category: Ref;
   };
 };
+
+export type OrderStatus =
+  | "NEW"
+  | "CONFIRMED"
+  | "SHIPPED"
+  | "COMPLETED"
+  | "CANCELLED";
+export type DeliveryMethod = "COURIER" | "PICKUP";
+export type PaymentMethod = "ON_DELIVERY" | "INSTALLMENT";
+
+/** Позиция заказа — снимок товара на момент оформления. */
+export type OrderItem = {
+  id: number;
+  productId: number | null;
+  name: string;
+  sku: string;
+  price: number;
+  qty: number;
+  /** null, если товар удалён из каталога */
+  product: {
+    slug: string;
+    images: ProductImage[];
+    category: { slug: string };
+  } | null;
+};
+
+export type Order = {
+  id: number;
+  status: OrderStatus;
+  customerName: string;
+  phone: string;
+  email: string | null;
+  delivery: DeliveryMethod;
+  city: string | null;
+  address: string | null;
+  apartment: string | null;
+  payment: PaymentMethod;
+  comment: string | null;
+  total: number;
+  items: OrderItem[];
+  createdAt: string;
+  updatedAt: string;
+};

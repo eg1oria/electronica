@@ -1,6 +1,6 @@
 # Electronica — бэкенд
 
-API магазина электроники: каталог товаров, категории, бренды, характеристики, загрузка фото и защищённые эндпоинты для админки.
+API магазина электроники: каталог товаров, категории, бренды, характеристики, заказы, загрузка фото и защищённые эндпоинты для админки.
 
 **Стек:** NestJS 12 · Prisma 7 · PostgreSQL 17 · JWT
 
@@ -47,7 +47,9 @@ docker compose exec api node dist/seed.js   # создать админа и д�
   - **specs[]** — `name`, `value`, `group`, `position` (например «Память → SSD → 512 ГБ»)
 - **Category** — `name`, `slug`, `description`, `image`, `parentId` (подкатегории)
 - **Brand** — `name`, `slug`, `logo`, `description`
-- **User** — сотрудники админки, роли `ADMIN` и `MANAGER`
+- **Order** — `status` (`NEW` → `CONFIRMED` → `SHIPPED` → `COMPLETED`, либо `CANCELLED`), `customerName`, `phone`, `email`, `delivery` (`COURIER` · `PICKUP`), `city`, `address`, `apartment`, `payment` (`ON_DELIVERY` · `INSTALLMENT`), `comment`, `total`
+  - **items[]** — снимок товара на момент заказа: `productId` (пусто, если товар удалён), `name`, `sku`, `price`, `qty`
+- **User** — учётная запись админки; администратор создаётся `npm run db:seed` из `ADMIN_LOGIN` / `ADMIN_PASSWORD`
 
 Цены в ответах — числа (`54990.5`). `slug`, если не передан, генерируется из названия (кириллица транслитерируется).
 
@@ -65,11 +67,34 @@ docker compose exec api node dist/seed.js   # создать админа и д�
 | GET | `/categories/:slug` | категория с родителем и подкатегориями |
 | GET | `/brands`, `/brands/:slug` | бренды |
 | GET | `/banners` | слайды главной: включённые, с опубликованными товарами, по порядку |
+| POST | `/orders` | оформить заказ (см. ниже) |
 | GET | `/uploads/:file` | загруженные изображения |
 | GET | `/health` | проверка API и БД |
 
 Параметры `GET /products`: `search`, `categorySlug` (включая подкатегории), `brandSlug`, `minPrice`, `maxPrice`, `inStock`, `isFeatured`, `sort` (`newest` · `price_asc` · `price_desc` · `name`), `page`, `limit` (≤ 100).
 Ответ: `{ items, total, page, limit }`.
+
+### Оформление заказа
+
+```json
+{
+  "customerName": "Иван Петров",
+  "phone": "+7 700 123 45 67",
+  "email": null,
+  "delivery": "COURIER",
+  "city": "Алматы",
+  "address": "ул. Абая, 1",
+  "apartment": "12",
+  "payment": "ON_DELIVERY",
+  "comment": null,
+  "items": [{ "productId": 1, "qty": 2 }]
+}
+```
+
+- Для `COURIER` обязательны `city` и `address`; при `PICKUP` адрес не сохраняется.
+- Цены и сумма берутся из базы, клиент передаёт только `productId` и `qty` (1–99); одинаковые позиции складываются.
+- Остатки списываются в той же транзакции. Товар скрыт или удалён → `409`, не хватает на складе → `409` с текстом «в наличии только N шт.».
+- Не больше 10 заказов в минуту с одного IP.
 
 ### Авторизация
 
@@ -78,7 +103,7 @@ docker compose exec api node dist/seed.js   # создать админа и д�
 | POST | `/auth/login` | `{ login, password }` → `{ accessToken, user }` |
 | GET | `/auth/me` | текущий пользователь |
 
-### Админка (ADMIN и MANAGER)
+### Админка
 
 | Метод | Путь | Описание |
 | --- | --- | --- |
@@ -95,19 +120,14 @@ docker compose exec api node dist/seed.js   # создать админа и д�
 | GET/POST | `/admin/banners` | слайды главной / создать `{ productId, badge?, title?, subtitle?, image?, isActive? }` (не больше 5 → 409) |
 | GET/PATCH/DELETE | `/admin/banners/:id` | получить / изменить / удалить |
 | PUT | `/admin/banners/order` | `{ ids }` — все id в новом порядке |
+| GET | `/admin/orders` | заказы, новые сверху; `status`, `search` (номер `№12`, имя, телефон, email), `page`, `limit` |
+| GET | `/admin/orders/stats` | количество заказов по статусам |
+| GET | `/admin/orders/:id` | заказ с позициями |
+| PATCH | `/admin/orders/:id` | `{ status }`; отмена возвращает товары на склад, отменённый заказ изменить нельзя (400) |
 | POST | `/admin/uploads` | `multipart/form-data`, поле `file`: JPEG/PNG/WebP/AVIF до 5 МБ → `{ url }` |
 | DELETE | `/admin/uploads/:filename` | удалить файл (409, если он где-то используется) |
 
 Фото, которые больше нигде не используются (после удаления товара, замены `images`, смены картинки категории или логотипа бренда), удаляются с диска автоматически.
-
-### Только ADMIN
-
-| Метод | Путь | Описание |
-| --- | --- | --- |
-| GET/POST | `/admin/users` | сотрудники / создать `{ login, password, name?, role? }` |
-| PATCH/DELETE | `/admin/users/:id` | изменить / удалить (себя и последнего администратора удалить нельзя) |
-
-Смена пароля или роли сотрудника сразу делает его старые токены недействительными.
 
 ### Пример создания товара
 
@@ -131,6 +151,6 @@ curl -X POST localhost:4000/api/admin/products \
 - `slug` генерируется из названия и при совпадении получает номер: `apple`, `apple-2`…
 - `oldPrice` должна быть больше `price`; ссылки на фото — только `/uploads/...` или `http(s)://`.
 - Загруженный файл проверяется по содержимому, а не только по заголовку `Content-Type`.
-- Вход: не больше 10 попыток в минуту с одного IP, на всё API — 300 запросов в минуту.
+- Вход и оформление заказа: не больше 10 запросов в минуту с одного IP, на всё API — 300 запросов в минуту.
 
 Коды ответов: `400` — ошибка валидации (лишние поля тоже отклоняются), `401` — нет токена или он отозван, `403` — не хватает роли, `404` — не найдено, `409` — конфликт (занятый slug или артикул, удаление связанной записи), `413` — слишком большой файл, `429` — слишком много запросов.

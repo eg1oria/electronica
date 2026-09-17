@@ -2,24 +2,12 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { API_URL, ApiError } from "../api";
+import { API_URL, ApiError, errorMessage } from "../api";
 import { TOKEN_COOKIE } from "./constants";
 import type { AdminUser } from "./types";
 
 export async function getToken() {
   return (await cookies()).get(TOKEN_COOKIE)?.value;
-}
-
-/** Сообщение об ошибке от NestJS: message бывает строкой или массивом. */
-async function errorMessage(res: Response) {
-  try {
-    const body = (await res.json()) as { message?: string | string[] };
-    const message = Array.isArray(body.message)
-      ? body.message.join("; ")
-      : body.message;
-    if (message) return message;
-  } catch {}
-  return `Ошибка API (${res.status})`;
 }
 
 /** Запрос к админскому API с токеном текущей сессии, без кэша. */

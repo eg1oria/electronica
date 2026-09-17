@@ -29,6 +29,18 @@ export class ApiError extends Error {
   }
 }
 
+/** Сообщение об ошибке от NestJS: message бывает строкой или массивом. */
+export async function errorMessage(res: Response) {
+  try {
+    const body = (await res.json()) as { message?: string | string[] };
+    const message = Array.isArray(body.message)
+      ? [...new Set(body.message)].join("; ")
+      : body.message;
+    if (message) return message;
+  } catch {}
+  return `Ошибка API (${res.status})`;
+}
+
 async function request<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     next: { revalidate: REVALIDATE_SECONDS },

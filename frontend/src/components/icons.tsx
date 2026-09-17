@@ -126,6 +126,13 @@ export const DashboardIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const ReceiptIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M5.5 3.5h13v17l-2.2-1.4-2.1 1.4-2.2-1.4-2.2 1.4-2.1-1.4-2.2 1.4v-17Z" />
+    <path d="M9 8h6M9 11.5h6M9 15h3.5" />
+  </Icon>
+);
+
 export const FolderIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V7Z" />

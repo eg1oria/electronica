@@ -14,17 +14,13 @@ import {
 import {
   EmptyState,
   PageHeader,
+  Pager,
   Table,
   selectClass,
 } from "@/components/admin/ui";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  PlusIcon,
-  SearchIcon,
-} from "@/components/icons";
+import { PlusIcon, SearchIcon } from "@/components/icons";
 import { ProductMedia } from "@/components/product-media";
-import { Button, ButtonLink, buttonClass, inputClass } from "@/components/ui";
+import { Button, ButtonLink, inputClass } from "@/components/ui";
 import { adminGet } from "@/lib/admin/session";
 import { categoryTree, indentLabel } from "@/lib/admin/tree";
 import type { AdminCategory, AdminProductList } from "@/lib/admin/types";
@@ -247,54 +243,8 @@ export default async function ProductsPage({
         </Table>
       )}
 
-      {pages > 1 && (
-        <nav
-          aria-label="Страницы"
-          className="mt-6 flex items-center justify-between gap-4 text-sm"
-        >
-          <span className="text-muted">
-            Страница {page} из {pages}
-          </span>
-          <div className="flex gap-2">
-            <PageLink href={pageHref(page - 1)} disabled={page <= 1} label="Назад">
-              <ChevronLeftIcon size={18} />
-            </PageLink>
-            <PageLink
-              href={pageHref(page + 1)}
-              disabled={page >= pages}
-              label="Вперёд"
-            >
-              <ChevronRightIcon size={18} />
-            </PageLink>
-          </div>
-        </nav>
-      )}
+      <Pager page={page} pages={pages} href={pageHref} />
     </>
   );
 }
 
-function PageLink({
-  href,
-  disabled,
-  label,
-  children,
-}: {
-  href: string;
-  disabled: boolean;
-  label: string;
-  children: React.ReactNode;
-}) {
-  const className = `${buttonClass("secondary", "sm")} !px-2.5`;
-  if (disabled) {
-    return (
-      <span aria-disabled="true" className={`${className} opacity-40`}>
-        {children}
-      </span>
-    );
-  }
-  return (
-    <Link href={href} aria-label={label} className={className}>
-      {children}
-    </Link>
-  );
-}

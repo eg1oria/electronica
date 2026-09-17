@@ -1,31 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { CheckIcon } from "@/components/icons";
 import { ProductMedia } from "@/components/product-media";
 import { Button, ButtonLink, inputClass } from "@/components/ui";
 import { formatPrice } from "@/lib/format";
 import { cart, cartTotal, useHydrated, useStore } from "@/lib/store";
+import type { DeliveryMethod, PaymentMethod } from "@/lib/types";
+import { placeOrder } from "./actions";
 
-type Delivery = "courier" | "pickup";
-
-const DELIVERY: { value: Delivery; title: string; note: string }[] = [
-  { value: "courier", title: "Курьером", note: "1–2 дня, стоимость уточнит менеджер" },
-  { value: "pickup", title: "Самовывоз", note: "Бесплатно, из магазина" },
+const DELIVERY: { value: DeliveryMethod; title: string; note: string }[] = [
+  { value: "COURIER", title: "Курьером", note: "1–2 дня, стоимость уточнит менеджер" },
+  { value: "PICKUP", title: "Самовывоз", note: "Бесплатно, из магазина" },
 ];
 
-const PAYMENT = [
-  { value: "on_delivery", title: "При получении", note: "Картой или наличными" },
-  { value: "installment", title: "Рассрочка", note: "Оформим после звонка менеджера" },
+const PAYMENT: { value: PaymentMethod; title: string; note: string }[] = [
+  { value: "ON_DELIVERY", title: "При получении", note: "Картой или наличными" },
+  { value: "INSTALLMENT", title: "Рассрочка", note: "Оформим после звонка менеджера" },
 ];
+
+type Placed = { number: number; name: string; total: number };
 
 export function CheckoutForm() {
   const hydrated = useHydrated();
   const items = useStore((s) => s.cart);
   const total = useStore(cartTotal);
-  const [delivery, setDelivery] = useState<Delivery>("courier");
-  const [placed, setPlaced] = useState<{ number: string; name: string } | null>(null);
+  const [delivery, setDelivery] = useState<DeliveryMethod>("COURIER");
+  const [placed, setPlaced] = useState<Placed | null>(null);
+  const [error, setError] = useState<string>();
+  const [pending, startTransition] = useTransition();
 
   if (!hydrated) return <div className="h-64" aria-busy="true" />;
 
@@ -37,7 +41,8 @@ export function CheckoutForm() {
         </span>
         <h2 className="mt-5 text-h2 font-semibold">Спасибо, {placed.name}!</h2>
         <p className="mt-2 text-muted">
-          Заказ № {placed.number} принят. Менеджер позвонит, чтобы подтвердить детали.
+          Заказ № {placed.number} на {formatPrice(placed.total)} принят. Менеджер
+          позвонит, чтобы подтвердить детали.
         </p>
         <ButtonLink href="/catalog" className="mt-8">
           Вернуться в каталог
@@ -61,13 +66,32 @@ export function CheckoutForm() {
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
-    // TODO: отправить заказ в API, когда на бэкенде появится эндпоинт заказов.
-    setPlaced({
-      number: String(Date.now()).slice(-6),
-      name: String(data.get("name")).trim().split(" ")[0],
+    const field = (key: string) => String(data.get(key) ?? "").trim();
+    const courier = delivery === "COURIER";
+    const name = field("name");
+
+    setError(undefined);
+    startTransition(async () => {
+      const result = await placeOrder({
+        customerName: name,
+        phone: field("phone"),
+        email: field("email") || null,
+        delivery,
+        city: courier ? field("city") : null,
+        address: courier ? field("address") : null,
+        apartment: courier ? field("apartment") || null : null,
+        payment: field("payment") as PaymentMethod,
+        comment: field("comment") || null,
+        items: items.map((i) => ({ productId: i.id, qty: i.qty })),
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setPlaced({ number: result.id, name: name.split(/\s+/)[0], total: result.total });
+      cart.clear();
+      window.scrollTo({ top: 0 });
     });
-    cart.clear();
-    window.scrollTo({ top: 0 });
   }
 
   return (
@@ -76,7 +100,14 @@ export function CheckoutForm() {
         <Step n={1} title="Контакты">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Имя и фамилия" className="sm:col-span-2">
-              <input name="name" required autoComplete="name" maxLength={100} className={inputClass} />
+              <input
+                name="name"
+                required
+                autoComplete="name"
+                minLength={2}
+                maxLength={100}
+                className={inputClass}
+              />
             </Field>
             <Field label="Телефон">
               <input
@@ -91,7 +122,13 @@ export function CheckoutForm() {
               />
             </Field>
             <Field label="Email" hint="Для чека и статуса заказа">
-              <input name="email" type="email" autoComplete="email" className={inputClass} />
+              <input
+                name="email"
+                type="email"
+                autoComplete="email"
+                maxLength={254}
+                className={inputClass}
+              />
             </Field>
           </div>
         </Step>
@@ -110,16 +147,30 @@ export function CheckoutForm() {
               />
             ))}
           </div>
-          {delivery === "courier" && (
+          {delivery === "COURIER" && (
             <div className="mt-4 grid gap-4 sm:grid-cols-6">
               <Field label="Город" className="sm:col-span-2">
-                <input name="city" required autoComplete="address-level2" className={inputClass} />
+                <input
+                  name="city"
+                  required
+                  minLength={2}
+                  maxLength={100}
+                  autoComplete="address-level2"
+                  className={inputClass}
+                />
               </Field>
               <Field label="Улица, дом" className="sm:col-span-4">
-                <input name="address" required autoComplete="street-address" className={inputClass} />
+                <input
+                  name="address"
+                  required
+                  minLength={3}
+                  maxLength={300}
+                  autoComplete="street-address"
+                  className={inputClass}
+                />
               </Field>
               <Field label="Квартира / офис" className="sm:col-span-2">
-                <input name="apartment" className={inputClass} />
+                <input name="apartment" maxLength={50} className={inputClass} />
               </Field>
             </div>
           )}
@@ -181,8 +232,19 @@ export function CheckoutForm() {
             <span className="font-semibold">Итого</span>
             <span className="text-h2 font-semibold">{formatPrice(total)}</span>
           </div>
-          <Button type="submit" variant="accent" size="lg" className="mt-6 w-full">
-            Подтвердить заказ
+          {error && (
+            <p role="alert" className="mt-4 rounded-btn bg-danger/10 px-3.5 py-2.5 text-sm text-danger">
+              {error}
+            </p>
+          )}
+          <Button
+            type="submit"
+            variant="accent"
+            size="lg"
+            disabled={pending}
+            className="mt-6 w-full"
+          >
+            {pending ? "Отправляем…" : "Подтвердить заказ"}
           </Button>
           <p className="mt-3 text-center text-sm text-muted">
             Нажимая кнопку, вы соглашаетесь на обработку персональных данных

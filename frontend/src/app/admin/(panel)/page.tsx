@@ -4,19 +4,23 @@ import { Card, PageHeader, StatusDot } from "@/components/admin/ui";
 import { PlusIcon } from "@/components/icons";
 import { ButtonLink } from "@/components/ui";
 import { adminGet, requireUser } from "@/lib/admin/session";
+import { formatDate } from "@/lib/admin/orders";
 import type {
   AdminBrand,
   AdminCategory,
+  AdminOrderList,
   AdminProductList,
   AdminProductListItem,
+  OrderStats,
 } from "@/lib/admin/types";
 import { formatPrice } from "@/lib/format";
+import { StatusBadge } from "./orders/status-badge";
 
 export const metadata: Metadata = { title: "Обзор" };
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const [all, hidden, outOfStock, recent, categories, brands] =
+  const [all, hidden, outOfStock, recent, categories, brands, orderStats, newOrders] =
     await Promise.all([
       adminGet<AdminProductList>("/admin/products?limit=1"),
       adminGet<AdminProductList>("/admin/products?isActive=false&limit=1"),
@@ -24,9 +28,16 @@ export default async function DashboardPage() {
       adminGet<AdminProductList>("/admin/products?sort=newest&limit=5"),
       adminGet<AdminCategory[]>("/admin/categories"),
       adminGet<AdminBrand[]>("/admin/brands"),
+      adminGet<OrderStats>("/admin/orders/stats"),
+      adminGet<AdminOrderList>("/admin/orders?status=NEW&limit=5"),
     ]);
 
   const stats = [
+    {
+      label: "Новых заказов",
+      value: orderStats.NEW,
+      href: "/admin/orders?status=NEW",
+    },
     { label: "Товаров", value: all.total, href: "/admin/products" },
     {
       label: "Скрыто с витрины",
@@ -46,7 +57,7 @@ export default async function DashboardPage() {
     <>
       <PageHeader
         title={`Здравствуйте${user.name ? `, ${user.name.split(" ")[0]}` : ""}`}
-        description="Коротко о состоянии каталога."
+        description="Коротко о заказах и каталоге."
         action={
           <ButtonLink href="/admin/products/new">
             <PlusIcon size={18} />
@@ -55,7 +66,7 @@ export default async function DashboardPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {stats.map((s) => (
           <Link
             key={s.label}
@@ -68,7 +79,45 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <Card title="Новые заказы" className="mt-8">
+        {newOrders.items.length === 0 ? (
+          <p className="text-sm text-muted">Новых заказов нет.</p>
+        ) : (
+          <ul className="-my-3 divide-y divide-border">
+            {newOrders.items.map((o) => (
+              <li key={o.id}>
+                <Link
+                  href={`/admin/orders/${o.id}`}
+                  className="group flex items-center justify-between gap-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium group-hover:text-accent">
+                      № {o.id} · {o.customerName}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {formatDate(o.createdAt)} · {o.phone}
+                    </p>
+                  </div>
+                  <span className="flex shrink-0 items-center gap-3 text-sm tabular-nums">
+                    {formatPrice(o.total)}
+                    <StatusBadge status={o.status} />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        {orderStats.NEW > newOrders.items.length && (
+          <Link
+            href="/admin/orders?status=NEW"
+            className="mt-4 inline-block text-sm font-medium text-accent hover:underline"
+          >
+            Все новые заказы ({orderStats.NEW})
+          </Link>
+        )}
+      </Card>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <ProductList
           title="Недавно добавленные"
           items={recent.items}

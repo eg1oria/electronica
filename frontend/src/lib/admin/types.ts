@@ -1,5 +1,7 @@
 import type {
   Category,
+  Order,
+  OrderStatus,
   Paginated,
   ProductDetails,
   ProductListItem,
@@ -34,3 +36,7 @@ export const MAX_BANNERS = 5;
 
 /** Результат Server Action для useActionState. */
 export type ActionState = { error?: string; ok?: boolean } | undefined;
+
+export type { Order as AdminOrder } from "../types";
+export type AdminOrderList = Paginated<Order>;
+export type OrderStats = Record<OrderStatus, number>;

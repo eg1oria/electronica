@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowLeftIcon } from "../icons";
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon } from "../icons";
+import { buttonClass } from "../ui";
 
 export function PageHeader({
   title,
@@ -141,3 +142,60 @@ export const textareaClass =
 
 export const selectClass =
   "h-11 w-full appearance-none rounded-btn border border-border bg-bg bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236e6e73' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")] bg-[position:right_12px_center] bg-no-repeat pr-9 pl-3.5 text-base text-fg outline-none transition-colors focus:border-accent sm:text-sm";
+
+/** «Страница N из M» и стрелки; href строит ссылку на страницу. */
+export function Pager({
+  page,
+  pages,
+  href,
+}: {
+  page: number;
+  pages: number;
+  href: (page: number) => string;
+}) {
+  if (pages <= 1) return null;
+  return (
+    <nav
+      aria-label="Страницы"
+      className="mt-6 flex items-center justify-between gap-4 text-sm"
+    >
+      <span className="text-muted">
+        Страница {page} из {pages}
+      </span>
+      <div className="flex gap-2">
+        <PageLink href={href(page - 1)} disabled={page <= 1} label="Назад">
+          <ChevronLeftIcon size={18} />
+        </PageLink>
+        <PageLink href={href(page + 1)} disabled={page >= pages} label="Вперёд">
+          <ChevronRightIcon size={18} />
+        </PageLink>
+      </div>
+    </nav>
+  );
+}
+
+function PageLink({
+  href,
+  disabled,
+  label,
+  children,
+}: {
+  href: string;
+  disabled: boolean;
+  label: string;
+  children: ReactNode;
+}) {
+  const className = `${buttonClass("secondary", "sm")} !px-2.5`;
+  if (disabled) {
+    return (
+      <span aria-disabled="true" className={`${className} opacity-40`}>
+        {children}
+      </span>
+    );
+  }
+  return (
+    <Link href={href} aria-label={label} className={className}>
+      {children}
+    </Link>
+  );
+}

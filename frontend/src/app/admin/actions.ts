@@ -7,6 +7,7 @@ import { API_URL, ApiError } from "@/lib/api";
 import { TOKEN_COOKIE, TOKEN_MAX_AGE } from "@/lib/admin/constants";
 import { adminFetch, requireUser } from "@/lib/admin/session";
 import type { ActionState, AdminUser } from "@/lib/admin/types";
+import type { OrderStatus } from "@/lib/types";
 
 /* Вспомогательное */
 
@@ -280,4 +281,14 @@ export async function reorderBanners(ids: number[]) {
 
 export async function deleteBanner(id: number, toList = false) {
   return remove(`/admin/banners/${id}`, "/admin/banners", toList);
+}
+
+/* Заказы */
+
+/** Отмена возвращает товары на склад — это делает API. */
+export async function updateOrderStatus(id: number, status: OrderStatus) {
+  await requireUser();
+  return mutate(() =>
+    adminFetch(`/admin/orders/${id}`, { method: "PATCH", json: { status } }),
+  );
 }
