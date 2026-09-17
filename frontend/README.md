@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# nord. — витрина магазина
 
-## Getting Started
+Next.js 16 (App Router) · React 19 · Tailwind CSS 4. Данные берутся из API в `../backend`.
 
-First, run the development server:
+## Запуск
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # адрес API, по умолчанию http://localhost:4000/api
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Бэкенд должен быть запущен (см. `../backend/README.md`). `npm run build` тоже ходит в API: главная собирается статически и обновляется раз в минуту.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Страницы
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Путь | Что там |
+| --- | --- |
+| `/` | промо-блок, категории, популярные товары, баннеры |
+| `/catalog` | каталог: `category`, `search`, `brand`, `min`, `max`, `stock=1`, `sort`, `page` |
+| `/product/[slug]` | галерея, цена, характеристики по группам, похожие товары |
+| `/cart`, `/checkout` | корзина и оформление заказа |
+| `/favorites` | избранное |
+| `/help` | доставка, гарантия, трейд-ин, контакты (тексты-заготовки) |
 
-## Learn More
+## Устройство
 
-To learn more about Next.js, take a look at the following resources:
+- `src/app/globals.css` — дизайн-токены (цвета, шрифтовая шкала 48/32/24/18/16/14, радиусы 12/8) и тёмная тема через `data-theme` на `<html>`.
+- `src/lib/api.ts` — запросы к API (только на сервере), `src/lib/types.ts` — типы ответов.
+- `src/lib/store.ts` — корзина и избранное в `localStorage`.
+- `src/components/` — шапка, подвал, карточка товара, кнопки, иконки.
+- Пока у товара нет фото, вместо него рисуется нейтральный силуэт устройства по категории.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Заказы пока не отправляются: на бэкенде нет эндпоинта для заказов (см. TODO в `src/app/checkout/checkout-form.tsx`).

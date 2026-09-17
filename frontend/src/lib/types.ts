@@ -1,0 +1,78 @@
+/** Типы ответов API (см. backend/README.md). */
+
+export type Ref = { id: number; name: string; slug: string };
+
+export type ProductImage = {
+  id: number;
+  url: string;
+  alt: string | null;
+  position: number;
+};
+
+export type ProductSpec = {
+  id: number;
+  name: string;
+  value: string;
+  group: string | null;
+  position: number;
+};
+
+type ProductBase = {
+  id: number;
+  name: string;
+  slug: string;
+  sku: string;
+  shortDescription: string | null;
+  description: string;
+  price: number;
+  oldPrice: number | null;
+  stock: number;
+  isFeatured: boolean;
+  warrantyMonths: number | null;
+  weightGrams: number | null;
+  createdAt: string;
+};
+
+/** В списке приходит только главное фото. */
+export type ProductListItem = ProductBase & {
+  images: ProductImage[];
+  category: Ref;
+  brand: Ref | null;
+};
+
+export type ProductDetails = ProductBase & {
+  images: ProductImage[];
+  specs: ProductSpec[];
+  category: Ref & { parentId: number | null };
+  brand: (Ref & { logo: string | null }) | null;
+};
+
+export type Paginated<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type ProductSort = "newest" | "price_asc" | "price_desc" | "name";
+
+export type Category = Ref & {
+  description: string | null;
+  image: string | null;
+  parentId: number | null;
+};
+
+export type CategoryNode = Category & {
+  productsCount: number;
+  children: CategoryNode[];
+};
+
+export type CategoryDetails = Category & {
+  parent: Category | null;
+  children: Category[];
+};
+
+export type Brand = Ref & {
+  logo: string | null;
+  _count: { products: number };
+};
