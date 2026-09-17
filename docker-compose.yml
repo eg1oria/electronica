@@ -1,0 +1,145 @@
+# Продакшн-стек целиком: база, миграции, API, витрина и nginx.
+#
+#   cp .env.example .env && nano .env      # секреты и домен
+#   docker compose up -d --build           # сборка и запуск
+#   docker compose exec api node dist/seed.js   # админ (и демо-каталог)
+#
+# Локальная разработка: база отдельно — backend/docker-compose.yml.
+
+name: electronica
+
+x-database-url: &database-url postgresql://${POSTGRES_USER:-electronica}:${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD в .env}@postgres:5432/${POSTGRES_DB:-electronica}?schema=public
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '5'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: electronica-postgres
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-electronica}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD в .env}
+      POSTGRES_DB: ${POSTGRES_DB:-electronica}
+    # Порт наружу не публикуем: база доступна только контейнерам стека.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Одноразовый контейнер: накатывает миграции и завершается.
+  migrate:
+    build:
+      context: ./backend
+      target: migrator
+    image: electronica-migrate
+    container_name: electronica-migrate
+    restart: 'no'
+    logging: *logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: *database-url
+
+  api:
+    build:
+      context: ./backend
+      target: runner
+    image: electronica-api
+    container_name: electronica-api
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: *database-url
+      JWT_SECRET: ${JWT_SECRET:?Задайте JWT_SECRET в .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      ADMIN_LOGIN: ${ADMIN_LOGIN:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      SEED_DEMO: ${SEED_DEMO:-false}
+      # Витрина и API на одном домене, но оставляем явный список:
+      # если фронтенд вынесут на другой адрес, менять только .env.
+      CORS_ORIGIN: ${SITE_URL:-http://localhost}
+      # Запросы приходят от nginx — лимиты считаем по реальному IP клиента.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+    volumes:
+      - uploads:/app/uploads
+    expose:
+      - '4000'
+
+  web:
+    build:
+      context: ./frontend
+      target: runner
+      args:
+        # Попадает в браузерный код на этапе сборки. «/api» — тот же домен,
+        # что и сайт; при изменении нужна пересборка образа.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+    image: electronica-web
+    container_name: electronica-web
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # Серверный рендеринг ходит в API напрямую, минуя nginx.
+      API_URL: http://api:4000/api
+    expose:
+      - '3000'
+
+  nginx:
+    image: nginx:1.29-alpine
+    container_name: electronica-nginx
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    ports:
+      - '${HTTP_PORT:-80}:80'
+      - '${HTTPS_PORT:-443}:443'
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./deploy/nginx/snippets:/etc/nginx/snippets:ro
+      # Фото товаров отдаём с диска, тот же том, куда пишет API.
+      - uploads:/var/www/uploads:ro
+      - certbot-www:/var/www/certbot:ro
+      - certbot-conf:/etc/letsencrypt:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/nginx-health > /dev/null || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Сертификаты Let's Encrypt. Запускается вручную:
+  #   docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d example.com
+  #   docker compose run --rm certbot renew
+  certbot:
+    image: certbot/certbot:latest
+    profiles: ['certbot']
+    volumes:
+      - certbot-conf:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+
+volumes:
+  pgdata:
+  uploads:
+  certbot-conf:
+  certbot-www:

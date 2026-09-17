@@ -10,12 +10,21 @@ import type {
   ProductSort,
 } from "./types";
 
-/** На сервере можно ходить во внутренний адрес API (например, в Docker). */
+/**
+ * На сервере можно ходить во внутренний адрес API (например, в Docker).
+ * NEXT_PUBLIC_API_URL за nginx бывает относительным («/api») — из серверного
+ * fetch такой адрес недоступен, поэтому берём его только если он абсолютный.
+ */
 export const API_URL = (
-  process.env.API_URL ??
-  process.env.NEXT_PUBLIC_API_URL ??
+  process.env.API_URL?.trim() ||
+  publicApiUrl() ||
   "http://localhost:4000/api"
 ).replace(/\/$/, "");
+
+function publicApiUrl() {
+  const url = process.env.NEXT_PUBLIC_API_URL?.trim();
+  return url && /^https?:\/\//.test(url) ? url : undefined;
+}
 
 /** Каталог меняется нечасто — кэшируем ответы на минуту. */
 const REVALIDATE_SECONDS = 60;

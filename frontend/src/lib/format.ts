@@ -22,9 +22,15 @@ export function plural(n: number, [one, few, many]: [string, string, string]) {
   return many;
 }
 
-const ASSET_ORIGIN = new URL(
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api",
-).origin;
+/**
+ * Откуда браузер берёт фото. Абсолютный NEXT_PUBLIC_API_URL (разработка:
+ * API на другом порту) — его origin; относительный «/api» (за nginx на
+ * одном домене) — пустая строка, то есть текущий домен.
+ */
+const ASSET_ORIGIN = (() => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+  return /^https?:\/\//.test(apiUrl) ? new URL(apiUrl).origin : "";
+})();
 
 /** Фото из API приходят как /uploads/... — они раздаются с корня сервера API. */
 export function assetUrl(url: string) {

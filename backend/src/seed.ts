@@ -7,6 +7,7 @@ import { PrismaClient, Role } from './generated/prisma/client';
  * Начальные данные: администратор из ADMIN_LOGIN/ADMIN_PASSWORD и демо-каталог.
  * Идемпотентен — существующие записи не перезаписываются.
  * Dev: `npm run db:seed`, в Docker: `node dist/seed.js`.
+ * SEED_DEMO=false — создать только администратора (боевой сервер).
  */
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL не задан');
 const prisma = new PrismaClient({
@@ -31,6 +32,11 @@ async function main() {
       passwordHash: await bcrypt.hash(password, 10),
     },
   });
+
+  if (process.env.SEED_DEMO === 'false') {
+    console.log(`Сид выполнен, демо-каталог пропущен. Админ: ${login}`);
+    return;
+  }
 
   const categories = [
     { slug: 'smartphones', name: 'Смартфоны' },

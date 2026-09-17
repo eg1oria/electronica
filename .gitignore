@@ -1,0 +1,17 @@
+# Переменные окружения продакшн-стека
+.env
+.env.*
+!.env.example
+
+# ОС и редакторы
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Локальные сертификаты и дампы
+*.pem
+*.sql.gz
+backups/

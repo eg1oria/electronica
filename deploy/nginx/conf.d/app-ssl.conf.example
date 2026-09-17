@@ -1,0 +1,97 @@
+# HTTPS-конфигурация. Включается вместо app.conf, когда получен сертификат:
+#
+#   cd deploy/nginx/conf.d
+#   sed 's/example\.com/ваш-домен.ru/g' app-ssl.conf.example > app-ssl.conf
+#   mv app.conf app.conf.disabled          # файлы не на .conf nginx не читает
+#   docker compose exec nginx nginx -t && docker compose exec nginx nginx -s reload
+#
+# Порядок получения сертификата — в DEPLOY.md, раздел «HTTPS».
+
+# ---------- http: проверка домена и редирект на https ----------
+server {
+    listen      80 default_server;
+    listen      [::]:80 default_server;
+    server_name example.com www.example.com;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+        access_log off;
+    }
+
+    location = /nginx-health {
+        access_log off;
+        return 200 "ok\n";
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ---------- https ----------
+server {
+    listen      443 ssl default_server;
+    listen      [::]:443 ssl default_server;
+    http2       on;
+    server_name example.com www.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    ssl_protocols             TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache         shared:SSL:10m;
+    ssl_session_timeout       1d;
+    ssl_session_tickets       off;
+    ssl_stapling              on;
+    ssl_stapling_verify       on;
+
+    # Полгода HSTS. Включайте, только когда сайт полностью на https.
+    add_header Strict-Transport-Security "max-age=15768000" always;
+
+    location = /nginx-health {
+        access_log off;
+        return 200 "ok\n";
+    }
+
+    location ^~ /uploads/ {
+        root /var/www;
+        access_log off;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000, immutable" always;
+        add_header Strict-Transport-Security "max-age=15768000" always;
+        include /etc/nginx/snippets/security-headers.conf;
+        try_files $uri @api_uploads;
+    }
+
+    location @api_uploads {
+        proxy_pass http://api;
+        include /etc/nginx/snippets/proxy.conf;
+    }
+
+    location = /api/auth/login {
+        limit_req zone=login burst=5 nodelay;
+        proxy_pass http://api;
+        include /etc/nginx/snippets/proxy.conf;
+    }
+
+    location ^~ /api/ {
+        limit_req zone=api burst=40 nodelay;
+        proxy_pass http://api;
+        include /etc/nginx/snippets/proxy.conf;
+    }
+
+    location ^~ /_next/static/ {
+        proxy_pass http://web;
+        include /etc/nginx/snippets/proxy.conf;
+        access_log off;
+    }
+
+    location / {
+        proxy_pass http://web;
+        include /etc/nginx/snippets/proxy.conf;
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Strict-Transport-Security "max-age=15768000" always;
+    }
+}

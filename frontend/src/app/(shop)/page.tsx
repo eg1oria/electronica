@@ -7,6 +7,12 @@ import { getBanners, getCategories, getProducts } from '@/lib/api';
 import { serverNow } from '@/lib/format';
 import type { Banner, ProductListItem } from '@/lib/types';
 
+/**
+ * Главная рендерится на каждый запрос: в сборке образа API ещё недоступно,
+ * а в бою правки из админки видны сразу, без ожидания перегенерации.
+ */
+export const dynamic = "force-dynamic";
+
 async function getPopular(): Promise<ProductListItem[]> {
   const featured = await getProducts({ isFeatured: true, limit: 4 });
   if (featured.items.length >= 4) return featured.items;
