@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { API_URL, ApiError } from "@/lib/api";
@@ -110,10 +110,18 @@ async function setSessionCookie(accessToken: string) {
   (await cookies()).set(TOKEN_COOKIE, accessToken, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // По схеме запроса, а не по NODE_ENV: с флагом Secure браузер не сохранит
+    // cookie на сайте по http, и вход в админку молча вернёт на форму.
+    // Схему сообщает nginx заголовком X-Forwarded-Proto.
+    secure: await isHttps(),
     path: "/",
     maxAge: TOKEN_MAX_AGE,
   });
+}
+
+async function isHttps() {
+  const forwarded = (await headers()).get("x-forwarded-proto");
+  return (forwarded?.split(",")[0].trim() ?? "http") === "https";
 }
 
 export async function logout() {

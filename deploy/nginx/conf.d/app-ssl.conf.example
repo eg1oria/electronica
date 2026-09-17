@@ -44,11 +44,10 @@ server {
     ssl_session_cache         shared:SSL:10m;
     ssl_session_timeout       1d;
     ssl_session_tickets       off;
-    ssl_stapling              on;
-    ssl_stapling_verify       on;
+    # OCSP stapling не включаем: Let's Encrypt больше не отдаёт OCSP-ответы.
 
-    # Полгода HSTS. Включайте, только когда сайт полностью на https.
-    add_header Strict-Transport-Security "max-age=15768000" always;
+    # HSTS (полгода) ставим внутри location'ов: на уровне server он бы
+    # добавился и к ответам /api, где такой заголовок уже ставит helmet.
 
     location = /nginx-health {
         access_log off;
@@ -58,7 +57,7 @@ server {
     location ^~ /uploads/ {
         root /var/www;
         access_log off;
-        expires 30d;
+        # Только add_header: директива expires добавила бы второй Cache-Control.
         add_header Cache-Control "public, max-age=2592000, immutable" always;
         add_header Strict-Transport-Security "max-age=15768000" always;
         include /etc/nginx/snippets/security-headers.conf;

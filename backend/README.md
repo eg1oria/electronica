@@ -21,17 +21,24 @@ npm run start:dev           # http://localhost:4000/api
 
 ## Docker
 
+`backend/docker-compose.yml` поднимает только Postgres для локальной разработки
+(`npm run db:up`) — API при этом запускается на хосте.
+
+Весь стек в контейнерах (база, миграции, API, витрина, nginx) — в корне
+репозитория: `docker-compose.yml` и [DEPLOY.md](../DEPLOY.md).
+
 ```bash
-cp .env.example .env               # задайте JWT_SECRET, ADMIN_PASSWORD, при желании POSTGRES_PASSWORD
-docker compose up -d --build       # postgres → migrate (миграции) → api на http://localhost:4000/api
-docker compose exec api node dist/seed.js   # создать админа и демо-данные
+cd ..
+cp .env.example .env               # JWT_SECRET, POSTGRES_PASSWORD, ADMIN_PASSWORD
+docker compose up -d --build
+docker compose exec api node dist/seed.js   # админ (+ демо-каталог при SEED_DEMO=true)
 ```
 
-- `migrate` — одноразовый контейнер с Prisma CLI: применяет миграции и завершается, `api` стартует только после него. В рабочем образе Prisma CLI нет, поэтому он лёгкий.
+- `Dockerfile` собирает два образа: `migrator` (Prisma CLI, применяет миграции и завершается) и `runner` (только `dist` и prod-зависимости). `api` стартует после успешных миграций.
 - Фото хранятся в volume `uploads`, база — в volume `pgdata`.
 - `api` работает от пользователя `node`, у контейнера есть `HEALTHCHECK` на `/api/health`.
-- Postgres проброшен только на `127.0.0.1:5434`. Порт API меняется переменной `API_PORT`.
-- Если API стоит за nginx, задайте `TRUST_PROXY=1`, чтобы лимиты запросов считались по реальному IP.
+- За nginx задайте `TRUST_PROXY=1`, чтобы лимиты запросов считались по реальному IP.
+- `SEED_DEMO=false` — сид создаёт только администратора, без демо-каталога.
 
 | Скрипт | Что делает |
 | --- | --- |
