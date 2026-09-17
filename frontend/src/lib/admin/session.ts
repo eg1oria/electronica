@@ -3,11 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { API_URL, ApiError } from "../api";
+import { TOKEN_COOKIE } from "./constants";
 import type { AdminUser, Role } from "./types";
-
-export const TOKEN_COOKIE = "nord_admin_token";
-/** Совпадает с JWT_EXPIRES_IN на бэкенде по умолчанию. */
-export const TOKEN_MAX_AGE = 7 * 24 * 60 * 60;
 
 export async function getToken() {
   return (await cookies()).get(TOKEN_COOKIE)?.value;

@@ -5,8 +5,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import type { JwtPayload } from './jwt.strategy';
 
-// Хэш-заглушка: сравнение выполняется и для несуществующего email,
-// чтобы по времени ответа нельзя было узнать, есть ли такой пользователь.
+// Хэш-заглушка: сравнение выполняется и для несуществующего логина,
+// чтобы по времени ответа нельзя было узнать, есть ли такой логин.
 const DUMMY_HASH = bcrypt.hashSync('dummy-password', 10);
 
 @Injectable()
@@ -16,23 +16,23 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  async login({ email, password }: LoginDto) {
+  async login({ login, password }: LoginDto) {
     const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { login: login.toLowerCase() },
     });
     const valid = await bcrypt.compare(
       password,
       user?.passwordHash ?? DUMMY_HASH,
     );
     if (!user || !valid) {
-      throw new UnauthorizedException('Неверный email или пароль');
+      throw new UnauthorizedException('Неверный логин или пароль');
     }
     const payload: JwtPayload = { sub: user.id, ver: user.tokenVersion };
     return {
       accessToken: await this.jwt.signAsync(payload),
       user: {
         id: user.id,
-        email: user.email,
+        login: user.login,
         name: user.name,
         role: user.role,
       },

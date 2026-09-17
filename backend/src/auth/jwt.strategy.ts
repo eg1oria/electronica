@@ -13,7 +13,7 @@ export interface JwtPayload {
 
 export interface AuthUser {
   id: number;
-  email: string;
+  login: string;
   name: string | null;
   role: Role;
 }
@@ -39,7 +39,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       where: { id: payload.sub },
       select: {
         id: true,
-        email: true,
+        login: true,
         name: true,
         role: true,
         tokenVersion: true,

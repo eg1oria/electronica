@@ -11,7 +11,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 const userSelect = {
   id: true,
-  email: true,
+  login: true,
   name: true,
   role: true,
   createdAt: true,
@@ -29,18 +29,18 @@ export class UsersService {
     });
   }
 
-  async create({ password, email, ...rest }: CreateUserDto) {
+  async create({ password, login, ...rest }: CreateUserDto) {
     return this.prisma.user.create({
       data: {
         ...rest,
-        email: email.toLowerCase(),
+        login: login.toLowerCase(),
         passwordHash: await bcrypt.hash(password, 10),
       },
       select: userSelect,
     });
   }
 
-  async update(id: number, { password, email, ...rest }: UpdateUserDto) {
+  async update(id: number, { password, login, ...rest }: UpdateUserDto) {
     const user = await this.findOrFail(id);
     if (user.role === Role.ADMIN && rest.role && rest.role !== Role.ADMIN) {
       await this.assertNotLastAdmin();
@@ -51,7 +51,7 @@ export class UsersService {
       where: { id },
       data: {
         ...rest,
-        ...(email && { email: email.toLowerCase() }),
+        ...(login && { login: login.toLowerCase() }),
         ...(password && { passwordHash: await bcrypt.hash(password, 10) }),
         ...(revokeTokens && { tokenVersion: { increment: 1 } }),
       },

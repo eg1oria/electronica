@@ -1,8 +1,8 @@
 import {
-  IsEmail,
   IsEnum,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -10,10 +10,14 @@ import { Trim } from '../../common/validation/trim.decorator';
 import { Role } from '../../generated/prisma/client';
 
 export class CreateUserDto {
+  /** Латиница, цифры, точка, дефис и подчёркивание. */
   @Trim()
-  @IsEmail()
-  @MaxLength(254)
-  email: string;
+  @MinLength(3)
+  @MaxLength(64)
+  @Matches(/^[a-zA-Z0-9._-]+$/, {
+    message: 'login может содержать только латиницу, цифры, точку, дефис и _',
+  })
+  login: string;
 
   /** bcrypt учитывает только первые 72 байта. */
   @IsString()

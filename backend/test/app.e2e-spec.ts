@@ -24,7 +24,7 @@ describe('Shop API (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({
-        email: process.env.ADMIN_EMAIL ?? 'admin@electronica.local',
+        login: process.env.ADMIN_LOGIN ?? 'admin',
         password: process.env.ADMIN_PASSWORD ?? 'admin12345',
       })
       .expect(200);

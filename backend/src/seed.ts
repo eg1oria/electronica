@@ -4,7 +4,7 @@ import * as bcrypt from 'bcryptjs';
 import { PrismaClient, Role } from './generated/prisma/client';
 
 /**
- * Начальные данные: администратор из ADMIN_EMAIL/ADMIN_PASSWORD и демо-каталог.
+ * Начальные данные: администратор из ADMIN_LOGIN/ADMIN_PASSWORD и демо-каталог.
  * Идемпотентен — существующие записи не перезаписываются.
  * Dev: `npm run db:seed`, в Docker: `node dist/seed.js`.
  */
@@ -14,9 +14,7 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  const email = (
-    process.env.ADMIN_EMAIL ?? 'admin@electronica.local'
-  ).toLowerCase();
+  const login = (process.env.ADMIN_LOGIN ?? 'admin').toLowerCase();
   const password = process.env.ADMIN_PASSWORD ?? 'admin12345';
   if (password.length < 8) {
     throw new Error('ADMIN_PASSWORD должен быть не короче 8 символов');
@@ -24,10 +22,10 @@ async function main() {
 
   // Пароль существующего админа не перезаписывается.
   await prisma.user.upsert({
-    where: { email },
+    where: { login },
     update: {},
     create: {
-      email,
+      login,
       name: 'Администратор',
       role: Role.ADMIN,
       passwordHash: await bcrypt.hash(password, 10),
@@ -158,7 +156,7 @@ async function main() {
     });
   }
 
-  console.log(`Сид выполнен. Админ: ${email}`);
+  console.log(`Сид выполнен. Админ: ${login}`);
 }
 
 main()

@@ -52,7 +52,7 @@ services:
       DATABASE_URL: *database-url
       JWT_SECRET: ${JWT_SECRET:?Задайте JWT_SECRET в .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@electronica.local}
+      ADMIN_LOGIN: ${ADMIN_LOGIN:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       TRUST_PROXY: ${TRUST_PROXY:-}

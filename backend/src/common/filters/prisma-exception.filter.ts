@@ -12,7 +12,7 @@ import { Prisma } from '../../generated/prisma/client';
 const FIELD_NAMES: Record<string, string> = {
   slug: 'slug',
   sku: 'артикул',
-  email: 'email',
+  login: 'логин',
 };
 
 /** "Product_sku_key" → "sku" */

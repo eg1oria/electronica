@@ -15,7 +15,7 @@ npm run db:seed             # админ из .env + демо-категории
 npm run start:dev           # http://localhost:4000/api
 ```
 
-Админ по умолчанию: `admin@electronica.local` / `admin12345` (берётся из `ADMIN_EMAIL` / `ADMIN_PASSWORD`).
+Админ по умолчанию: `admin` / `admin12345` (берётся из `ADMIN_LOGIN` / `ADMIN_PASSWORD`).
 
 `JWT_SECRET` обязателен и должен быть не короче 32 символов — иначе приложение не запустится.
 
@@ -74,7 +74,7 @@ docker compose exec api node dist/seed.js   # создать админа и д�
 
 | Метод | Путь | Описание |
 | --- | --- | --- |
-| POST | `/auth/login` | `{ email, password }` → `{ accessToken, user }` |
+| POST | `/auth/login` | `{ login, password }` → `{ accessToken, user }` |
 | GET | `/auth/me` | текущий пользователь |
 
 ### Админка (ADMIN и MANAGER)
@@ -100,7 +100,7 @@ docker compose exec api node dist/seed.js   # создать админа и д�
 
 | Метод | Путь | Описание |
 | --- | --- | --- |
-| GET/POST | `/admin/users` | сотрудники / создать `{ email, password, name?, role? }` |
+| GET/POST | `/admin/users` | сотрудники / создать `{ login, password, name?, role? }` |
 | PATCH/DELETE | `/admin/users/:id` | изменить / удалить (себя и последнего администратора удалить нельзя) |
 
 Смена пароля или роли сотрудника сразу делает его старые токены недействительными.
