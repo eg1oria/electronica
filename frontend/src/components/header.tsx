@@ -10,7 +10,7 @@ import { Container } from "./ui";
 export function Logo() {
   return (
     <Link href="/" className="text-h3 font-bold tracking-tight">
-      nord<span className="text-accent">.</span>
+      Nova<span className="text-accent">Link</span>
     </Link>
   );
 }

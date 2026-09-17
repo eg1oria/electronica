@@ -1,4 +1,4 @@
-# nord. — витрина магазина
+# NovaLink — витрина магазина
 
 Next.js 16 (App Router) · React 19 · Tailwind CSS 4. Данные берутся из API в `../backend`.
 

@@ -29,7 +29,7 @@ export default async function HomePage() {
 
   return (
     <Container className="space-y-20 pt-6 sm:space-y-24 sm:pt-8">
-      <h1 className="sr-only">nord. — электроника без лишнего</h1>
+      <h1 className="sr-only">NovaLink — электроника без лишнего</h1>
       <HeroSlider slides={slides} />
 
       {categories.length > 0 && (
@@ -108,6 +108,7 @@ function bannerSlide(b: Banner): HeroSlide {
     categorySlug: p.category.slug,
     href: `/product/${p.slug}`,
     price: p.price,
+    oldPrice: p.oldPrice,
   };
 }
 
@@ -127,11 +128,12 @@ function productSlide(p: ProductListItem): HeroSlide {
     key: p.id,
     badge: p.isFeatured ? "Хит продаж" : "Новинка",
     title: p.name,
-    subtitle: p.description,
+    subtitle: p.shortDescription || p.description,
     image: p.images[0]?.url ?? null,
     imageAlt: p.images[0]?.alt ?? p.name,
     categorySlug: p.category.slug,
     href: `/product/${p.slug}`,
     price: p.price,
+    oldPrice: p.oldPrice,
   };
 }

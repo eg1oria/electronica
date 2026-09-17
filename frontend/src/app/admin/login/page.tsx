@@ -12,7 +12,7 @@ export default async function LoginPage() {
     <div className="flex min-h-dvh items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <p className="text-h2 font-bold tracking-tight">
-          nord<span className="text-accent">.</span>
+          Nova<span className="text-accent">Link</span>
           <span className="ml-2 text-base font-medium text-muted">admin</span>
         </p>
         <h1 className="mt-8 text-h2 font-semibold">Вход в админку</h1>

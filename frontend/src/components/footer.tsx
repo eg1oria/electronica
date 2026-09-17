@@ -61,7 +61,7 @@ export async function Footer() {
         </div>
       </Container>
       <Container className="border-t border-border py-6 text-sm text-muted">
-        © {new Date().getFullYear()} nord.
+        © {new Date().getFullYear()} NovaLink
       </Container>
     </footer>
   );

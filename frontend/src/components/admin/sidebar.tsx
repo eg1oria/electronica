@@ -37,7 +37,7 @@ const NAV: NavItem[] = [
 function AdminLogo() {
   return (
     <Link href="/admin" className="text-h3 font-bold tracking-tight">
-      nord<span className="text-accent">.</span>
+      Nova<span className="text-accent">Link</span>
       <span className="ml-1.5 text-sm font-medium text-muted">admin</span>
     </Link>
   );

@@ -10,8 +10,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "nord. — электроника без лишнего",
-    template: "%s — nord.",
+    default: "NovaLink — электроника без лишнего",
+    template: "%s — NovaLink",
   },
   description:
     "Смартфоны, ноутбуки, аудио и аксессуары. Официальная гарантия и быстрая доставка.",

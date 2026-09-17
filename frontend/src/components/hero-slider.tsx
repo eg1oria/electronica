@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { formatPrice } from "@/lib/format";
+import { discountPercent, formatPrice } from "@/lib/format";
 import { ProductMedia } from "./product-media";
 import { Badge, ButtonLink } from "./ui";
 
@@ -15,6 +15,7 @@ export type HeroSlide = {
   categorySlug: string;
   href: string;
   price: number;
+  oldPrice: number | null;
 };
 
 const INTERVAL_MS = 3000;
@@ -25,15 +26,23 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [dragX, setDragX] = useState(0);
+  // Анимация появления — только при смене слайда, не при загрузке страницы.
+  const [changed, setChanged] = useState(false);
   const drag = useRef<{ x: number; y: number; id: number } | null>(null);
   const count = slides.length;
 
-  const go = (next: number) => setIndex((next + count) % count);
+  const go = (next: number) => {
+    setChanged(true);
+    setIndex((next + count) % count);
+  };
 
   // Автопрокрутка; ручное перелистывание перезапускает таймер.
   useEffect(() => {
     if (count < 2 || paused) return;
-    const timer = setTimeout(() => setIndex((i) => (i + 1) % count), INTERVAL_MS);
+    const timer = setTimeout(() => {
+      setChanged(true);
+      setIndex((i) => (i + 1) % count);
+    }, INTERVAL_MS);
     return () => clearTimeout(timer);
   }, [index, paused, count]);
 
@@ -99,7 +108,13 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
             inert={i !== index}
             className="w-full shrink-0"
           >
-            <Slide slide={slide} priority={i === 0} />
+            <Slide
+              // Новый key перезапускает анимацию появления
+              key={changed && i === index ? `on-${index}` : "off"}
+              slide={slide}
+              priority={i === 0}
+              animate={changed && i === index}
+            />
           </div>
         ))}
       </div>
@@ -116,10 +131,21 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
               className="flex h-6 items-center px-0.5"
             >
               <span
-                className={`block h-1.5 rounded-full transition-all duration-300 ${
-                  i === index ? "w-6 bg-fg" : "w-1.5 bg-fg/25 hover:bg-fg/45"
+                className={`block h-1.5 overflow-hidden rounded-full transition-all duration-300 ${
+                  i === index ? "w-6 bg-fg/25" : "w-1.5 bg-fg/25 hover:bg-fg/45"
                 }`}
-              />
+              >
+                {i === index && (
+                  // Заполняется до следующей смены; на паузе — целиком
+                  <span
+                    key={`${index}-${paused}`}
+                    className={`block h-full w-full origin-left rounded-full bg-fg ${
+                      paused ? "" : "motion-safe:animate-fill"
+                    }`}
+                    style={{ animationDuration: `${INTERVAL_MS}ms` }}
+                  />
+                )}
+              </span>
             </button>
           ))}
         </div>
@@ -128,18 +154,47 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
   );
 }
 
-function Slide({ slide, priority }: { slide: HeroSlide; priority: boolean }) {
+function Slide({
+  slide,
+  priority,
+  animate,
+}: {
+  slide: HeroSlide;
+  priority: boolean;
+  animate: boolean;
+}) {
+  const discount = discountPercent(slide.price, slide.oldPrice);
+  // Элементы текста всплывают по очереди
+  const rise = (delay: number) =>
+    animate
+      ? { className: "motion-safe:animate-rise", style: { animationDelay: `${delay}ms` } }
+      : { className: "", style: undefined };
+
   return (
     <div className="grid h-full grid-cols-1 items-center gap-8 p-6 pb-14 sm:p-10 sm:pb-16 md:grid-cols-12 lg:p-14 lg:pb-16">
       <div className="md:col-span-6">
-        <Badge tone="neutral">{slide.badge}</Badge>
-        <h2 className="mt-5 text-h1 font-semibold text-balance sm:text-display">
+        <div className={`flex flex-wrap gap-2 ${rise(0).className}`}>
+          <Badge tone="neutral">{slide.badge}</Badge>
+          {discount > 0 && <Badge tone="danger">−{discount}%</Badge>}
+        </div>
+        <h2
+          className={`mt-5 text-h1 font-semibold text-balance sm:text-display ${rise(60).className}`}
+          style={rise(60).style}
+        >
           {slide.title}
         </h2>
         {slide.subtitle && (
-          <p className="mt-4 max-w-md text-base text-muted">{slide.subtitle}</p>
+          <p
+            className={`mt-4 line-clamp-3 max-w-md text-base text-muted ${rise(120).className}`}
+            style={rise(120).style}
+          >
+            {slide.subtitle}
+          </p>
         )}
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div
+          className={`mt-8 flex flex-wrap gap-3 ${rise(180).className}`}
+          style={rise(180).style}
+        >
           <ButtonLink href={slide.href} variant="accent" size="lg" draggable={false}>
             Купить за {formatPrice(slide.price)}
           </ButtonLink>
@@ -153,14 +208,24 @@ function Slide({ slide, priority }: { slide: HeroSlide; priority: boolean }) {
           </ButtonLink>
         </div>
       </div>
-      <div className="pointer-events-none md:col-span-6">
-        <ProductMedia
-          src={slide.image}
-          alt={slide.imageAlt}
-          categorySlug={slide.categorySlug}
-          priority={priority}
-          frame="aspect-[4/3]"
+      <div className="pointer-events-none relative md:col-span-6">
+        {/* Мягкое свечение за товаром */}
+        <div
+          aria-hidden
+          className="absolute inset-[18%] rounded-full bg-accent/[0.06] blur-3xl dark:bg-accent/10"
         />
+        <div className={animate ? "motion-safe:animate-pop" : undefined}>
+          <div className="motion-safe:animate-float">
+            <ProductMedia
+              src={slide.image}
+              alt={slide.imageAlt}
+              categorySlug={slide.categorySlug}
+              priority={priority}
+              frame="aspect-[4/3]"
+              inset="p-[4%]"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

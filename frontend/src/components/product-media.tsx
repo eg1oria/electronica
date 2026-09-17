@@ -10,6 +10,8 @@ type Props = {
   priority?: boolean;
   /** Пропорции и фон рамки */
   frame?: string;
+  /** Отступ фото от краёв рамки */
+  inset?: string;
   className?: string;
 };
 
@@ -23,6 +25,7 @@ export function ProductMedia({
   categorySlug,
   priority,
   frame = "aspect-square bg-surface",
+  inset = "p-[12%]",
   className = "",
 }: Props) {
   return (
@@ -37,7 +40,7 @@ export function ProductMedia({
           alt={alt}
           loading={priority ? "eager" : "lazy"}
           fetchPriority={priority ? "high" : undefined}
-          className="h-full w-full object-contain p-[12%] mix-blend-multiply dark:mix-blend-normal"
+          className={`h-full w-full object-contain ${inset} mix-blend-multiply dark:mix-blend-normal`}
         />
       ) : (
         <DeviceSilhouette kind={deviceKind(categorySlug)} />
