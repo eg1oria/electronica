@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { Footer } from "@/components/footer";
-import { Header } from "@/components/header";
 import { ThemeScript } from "@/components/theme-script";
 import "./globals.css";
 
@@ -33,11 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <ThemeScript />
       </head>
-      <body className="flex min-h-dvh flex-col font-sans">
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
-      </body>
+      <body className="font-sans">{children}</body>
     </html>
   );
 }

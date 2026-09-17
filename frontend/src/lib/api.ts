@@ -10,7 +10,7 @@ import type {
 } from "./types";
 
 /** На сервере можно ходить во внутренний адрес API (например, в Docker). */
-const API_URL = (
+export const API_URL = (
   process.env.API_URL ??
   process.env.NEXT_PUBLIC_API_URL ??
   "http://localhost:4000/api"
