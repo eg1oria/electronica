@@ -10,14 +10,16 @@ export function LoginForm() {
 
   return (
     <form action={action} className="mt-8 space-y-4">
-      <Field label="Email">
+      <Field label="Логин">
         <input
-          name="email"
-          type="email"
+          name="login"
           required
           autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           autoFocus
-          maxLength={254}
+          maxLength={64}
           className={inputClass}
         />
       </Field>

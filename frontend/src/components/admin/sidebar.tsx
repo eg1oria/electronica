@@ -13,8 +13,8 @@ import {
   FolderIcon,
   LogoutIcon,
   MenuIcon,
+  SlidesIcon,
   TagIcon,
-  UsersIcon,
 } from "../icons";
 import { ThemeToggle } from "../theme";
 
@@ -22,7 +22,6 @@ type NavItem = {
   href: string;
   label: string;
   icon: ComponentType<{ size?: number }>;
-  adminOnly?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -30,10 +29,8 @@ const NAV: NavItem[] = [
   { href: "/admin/products", label: "Товары", icon: BoxIcon },
   { href: "/admin/categories", label: "Категории", icon: FolderIcon },
   { href: "/admin/brands", label: "Бренды", icon: TagIcon },
-  { href: "/admin/users", label: "Сотрудники", icon: UsersIcon, adminOnly: true },
+  { href: "/admin/banners", label: "Баннеры", icon: SlidesIcon },
 ];
-
-const ROLE_LABEL = { ADMIN: "Администратор", MANAGER: "Менеджер" };
 
 function AdminLogo() {
   return (
@@ -44,34 +41,32 @@ function AdminLogo() {
   );
 }
 
-function Nav({ user, onNavigate }: { user: AdminUser; onNavigate?: () => void }) {
+function Nav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const isActive = (href: string) =>
     href === "/admin" ? pathname === href : pathname.startsWith(href);
 
   return (
     <nav aria-label="Разделы админки" className="flex flex-col gap-0.5">
-      {NAV.filter((item) => !item.adminOnly || user.role === "ADMIN").map(
-        ({ href, label, icon: Icon }) => {
-          const active = isActive(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onNavigate}
-              aria-current={active ? "page" : undefined}
-              className={`flex h-9 items-center gap-3 rounded-btn px-3 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-surface text-fg"
-                  : "text-muted hover:bg-surface hover:text-fg"
-              }`}
-            >
-              <Icon size={18} />
-              {label}
-            </Link>
-          );
-        },
-      )}
+      {NAV.map(({ href, label, icon: Icon }) => {
+        const active = isActive(href);
+        return (
+          <Link
+            key={href}
+            href={href}
+            onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
+            className={`flex h-9 items-center gap-3 rounded-btn px-3 text-sm font-medium transition-colors ${
+              active
+                ? "bg-surface text-fg"
+                : "text-muted hover:bg-surface hover:text-fg"
+            }`}
+          >
+            <Icon size={18} />
+            {label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
@@ -89,8 +84,8 @@ function Footer({ user }: { user: AdminUser }) {
       </Link>
       <div className="flex items-center gap-2 px-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{user.name || user.email}</p>
-          <p className="truncate text-xs text-muted">{ROLE_LABEL[user.role]}</p>
+          <p className="truncate text-sm font-medium">{user.name || "Администратор"}</p>
+          <p className="truncate text-xs text-muted">{user.login}</p>
         </div>
         <ThemeToggle />
         <form action={logout}>
@@ -120,7 +115,7 @@ export function Sidebar({ user }: { user: AdminUser }) {
           <AdminLogo />
         </div>
         <div className="flex-1">
-          <Nav user={user} />
+          <Nav />
         </div>
         <Footer user={user} />
       </aside>
@@ -159,7 +154,7 @@ export function Sidebar({ user }: { user: AdminUser }) {
               </button>
             </div>
             <div className="flex-1">
-              <Nav user={user} onNavigate={close} />
+              <Nav onNavigate={close} />
             </div>
             <Footer user={user} />
           </aside>

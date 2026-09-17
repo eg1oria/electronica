@@ -304,11 +304,7 @@ export function ProductForm({
                 На сайте ↗
               </a>
               <DeleteButton
-                action={async () => {
-                  const res = await deleteProduct(product.id);
-                  if (!res?.error) location.assign("/admin/products");
-                  return res;
-                }}
+                action={deleteProduct.bind(null, product.id, true)}
                 confirmText={`Удалить «${product.name}»? Это действие нельзя отменить.`}
               />
             </span>

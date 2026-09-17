@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { API_URL, ApiError } from "@/lib/api";
 import { TOKEN_COOKIE, TOKEN_MAX_AGE } from "@/lib/admin/constants";
 import { adminFetch, requireUser } from "@/lib/admin/session";
-import type { ActionState, AdminUser, Role } from "@/lib/admin/types";
+import type { ActionState, AdminUser } from "@/lib/admin/types";
 
 /* Вспомогательное */
 
@@ -43,6 +43,16 @@ async function mutate(run: () => Promise<unknown>): Promise<ActionState> {
   return { ok: true };
 }
 
+/** Удаление; со страницы редактирования — сразу обратно к списку. */
+async function remove(path: string, listPath: string, toList: boolean) {
+  await requireUser();
+  const result = await mutate(() => adminFetch(path, { method: "DELETE" }));
+  if (result?.error || !toList) return result;
+  redirect(listPath);
+}
+
+const bool = (data: FormData, key: string) => data.get(key) === "on";
+
 /* Вход и выход */
 
 export async function login(
@@ -53,7 +63,7 @@ export async function login(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      email: text(data, "email"),
+      login: text(data, "login"),
       password: String(data.get("password") ?? ""),
     }),
     cache: "no-store",
@@ -63,7 +73,7 @@ export async function login(
   if (res.status === 429) {
     return { error: "Слишком много попыток. Подождите минуту." };
   }
-  if (!res.ok) return { error: "Неверный email или пароль" };
+  if (!res.ok) return { error: "Неверный логин или пароль" };
 
   const { accessToken } = (await res.json()) as {
     accessToken: string;
@@ -142,11 +152,8 @@ export async function saveProduct(
   redirect("/admin/products");
 }
 
-export async function deleteProduct(id: number) {
-  await requireUser();
-  return mutate(() =>
-    adminFetch(`/admin/products/${id}`, { method: "DELETE" }),
-  );
+export async function deleteProduct(id: number, toList = false) {
+  return remove(`/admin/products/${id}`, "/admin/products", toList);
 }
 
 export async function toggleProduct(
@@ -197,11 +204,8 @@ export async function saveCategory(
   redirect("/admin/categories");
 }
 
-export async function deleteCategory(id: number) {
-  await requireUser();
-  return mutate(() =>
-    adminFetch(`/admin/categories/${id}`, { method: "DELETE" }),
-  );
+export async function deleteCategory(id: number, toList = false) {
+  return remove(`/admin/categories/${id}`, "/admin/categories", toList);
 }
 
 /* Бренды */
@@ -227,37 +231,53 @@ export async function saveBrand(
   redirect("/admin/brands");
 }
 
-export async function deleteBrand(id: number) {
-  await requireUser();
-  return mutate(() => adminFetch(`/admin/brands/${id}`, { method: "DELETE" }));
+export async function deleteBrand(id: number, toList = false) {
+  return remove(`/admin/brands/${id}`, "/admin/brands", toList);
 }
 
-/* Сотрудники (только ADMIN) */
+/* Баннеры на главной */
 
-export async function saveUser(
+export async function saveBanner(
   id: number | null,
   _prev: ActionState,
   data: FormData,
 ): Promise<ActionState> {
-  await requireUser("ADMIN");
-  const password = String(data.get("password") ?? "");
+  await requireUser();
   const result = await mutate(() =>
-    adminFetch(id ? `/admin/users/${id}` : "/admin/users", {
+    adminFetch(id ? `/admin/banners/${id}` : "/admin/banners", {
       method: id ? "PATCH" : "POST",
       json: {
-        email: text(data, "email"),
-        name: text(data, "name") || undefined,
-        role: text(data, "role") as Role,
-        // При редактировании пустой пароль — «не менять».
-        ...(password && { password }),
+        productId: Number(text(data, "productId")),
+        badge: optional(data, "badge"),
+        title: optional(data, "title"),
+        subtitle: optional(data, "subtitle"),
+        image: optional(data, "image"),
+        isActive: bool(data, "isActive"),
       },
     }),
   );
   if (result?.error) return result;
-  redirect("/admin/users");
+  redirect("/admin/banners");
 }
 
-export async function deleteUser(id: number) {
-  await requireUser("ADMIN");
-  return mutate(() => adminFetch(`/admin/users/${id}`, { method: "DELETE" }));
+export async function toggleBanner(id: number, isActive: boolean) {
+  await requireUser();
+  return mutate(() =>
+    adminFetch(`/admin/banners/${id}`, {
+      method: "PATCH",
+      json: { isActive },
+    }),
+  );
+}
+
+/** Порядок слайдов: все id в новом порядке. */
+export async function reorderBanners(ids: number[]) {
+  await requireUser();
+  return mutate(() =>
+    adminFetch("/admin/banners/order", { method: "PUT", json: { ids } }),
+  );
+}
+
+export async function deleteBanner(id: number, toList = false) {
+  return remove(`/admin/banners/${id}`, "/admin/banners", toList);
 }

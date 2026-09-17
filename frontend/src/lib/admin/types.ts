@@ -5,16 +5,12 @@ import type {
   ProductListItem,
 } from "../types";
 
-export type Role = "ADMIN" | "MANAGER";
-
 export type AdminUser = {
   id: number;
-  email: string;
+  login: string;
   name: string | null;
-  role: Role;
+  role: "ADMIN" | "MANAGER";
 };
-
-export type StaffUser = AdminUser & { createdAt: string; updatedAt: string };
 
 export type AdminProductListItem = ProductListItem & { isActive: boolean };
 export type AdminProductList = Paginated<AdminProductListItem>;
@@ -32,6 +28,9 @@ export type AdminBrand = {
   description: string | null;
   _count?: { products: number };
 };
+
+export type { Banner as AdminBanner } from "../types";
+export const MAX_BANNERS = 5;
 
 /** Результат Server Action для useActionState. */
 export type ActionState = { error?: string; ok?: boolean } | undefined;

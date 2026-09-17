@@ -76,3 +76,27 @@ export type Brand = Ref & {
   logo: string | null;
   _count: { products: number };
 };
+
+/** Слайд промо-блока на главной. Пустые поля берутся из товара. */
+export type Banner = {
+  id: number;
+  productId: number;
+  badge: string | null;
+  title: string | null;
+  subtitle: string | null;
+  image: string | null;
+  position: number;
+  isActive: boolean;
+  product: {
+    id: number;
+    name: string;
+    slug: string;
+    shortDescription: string | null;
+    description: string;
+    price: number;
+    oldPrice: number | null;
+    isActive: boolean;
+    images: ProductImage[];
+    category: Ref;
+  };
+};

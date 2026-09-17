@@ -73,6 +73,7 @@ model Product {
   brand            Brand?         @relation(fields: [brandId], references: [id], onDelete: SetNull)
   images           ProductImage[]
   specs            ProductSpec[]
+  banners          Banner[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -100,6 +101,27 @@ model ProductSpec {
   position  Int     @default(0)
   productId Int
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+/// Слайд промо-блока на главной (не больше 5).
+model Banner {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  /// Пусто — «Хит продаж»
+  badge     String?
+  /// Пусто — название товара
+  title     String?
+  /// Пусто — краткое описание товара
+  subtitle  String?
+  /// Пусто — главное фото товара
+  image     String?
+  position  Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([productId])
 }

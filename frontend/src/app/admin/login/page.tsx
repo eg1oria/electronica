@@ -15,10 +15,7 @@ export default async function LoginPage() {
           nord<span className="text-accent">.</span>
           <span className="ml-2 text-base font-medium text-muted">admin</span>
         </p>
-        <h1 className="mt-8 text-h2 font-semibold">Вход для сотрудников</h1>
-        <p className="mt-1.5 text-sm text-muted">
-          Используйте рабочий email и пароль.
-        </p>
+        <h1 className="mt-8 text-h2 font-semibold">Вход в админку</h1>
         <LoginForm />
       </div>
     </div>

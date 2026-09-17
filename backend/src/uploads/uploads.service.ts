@@ -69,7 +69,7 @@ export class UploadsService implements OnModuleInit {
     }
     if (await this.isReferenced(this.urlFor(filename))) {
       throw new ConflictException(
-        'Файл используется в товаре, категории или бренде',
+        'Файл используется в товаре, категории, бренде или баннере',
       );
     }
     try {
@@ -101,11 +101,12 @@ export class UploadsService implements OnModuleInit {
   }
 
   private async isReferenced(url: string) {
-    const [images, categories, brands] = await Promise.all([
+    const counts = await Promise.all([
       this.prisma.productImage.count({ where: { url } }),
       this.prisma.category.count({ where: { image: url } }),
       this.prisma.brand.count({ where: { logo: url } }),
+      this.prisma.banner.count({ where: { image: url } }),
     ]);
-    return images + categories + brands > 0;
+    return counts.some((n) => n > 0);
   }
 }

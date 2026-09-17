@@ -146,8 +146,16 @@ export class ProductsService {
 
   async remove(id: number) {
     const product = await this.findById(id);
+    // Баннеры товара удаляются каскадом — их картинки тоже больше не нужны.
+    const banners = await this.prisma.banner.findMany({
+      where: { productId: id },
+      select: { image: true },
+    });
     await this.prisma.product.delete({ where: { id } });
-    await this.uploads.removeUnused(product.images.map((i) => i.url));
+    await this.uploads.removeUnused([
+      ...product.images.map((i) => i.url),
+      ...banners.map((b) => b.image),
+    ]);
   }
 
   private async list(query: QueryProductsDto, base: Prisma.ProductWhereInput) {

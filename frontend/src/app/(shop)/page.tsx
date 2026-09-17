@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ArrowRightIcon, CategoryIcon } from "@/components/icons";
 import { ProductGrid } from "@/components/product-card";
-import { ProductMedia } from "@/components/product-media";
-import { Badge, ButtonLink, Container, SectionHeader } from "@/components/ui";
-import { getCategories, getProducts } from "@/lib/api";
-import { formatPrice, serverNow } from "@/lib/format";
-import type { ProductListItem } from "@/lib/types";
+import { HeroSlider, type HeroSlide } from "@/components/hero-slider";
+import { ButtonLink, Container, SectionHeader } from "@/components/ui";
+import { getBanners, getCategories, getProducts } from "@/lib/api";
+import { serverNow } from "@/lib/format";
+import type { Banner, ProductListItem } from "@/lib/types";
 
 async function getPopular(): Promise<ProductListItem[]> {
   const featured = await getProducts({ isFeatured: true, limit: 4 });
@@ -17,17 +17,20 @@ async function getPopular(): Promise<ProductListItem[]> {
 }
 
 export default async function HomePage() {
-  const [categories, popular, heroList] = await Promise.all([
+  const [categories, popular, banners] = await Promise.all([
     getCategories(),
     getPopular(),
-    getProducts({ isFeatured: true, categorySlug: "laptops", limit: 1 }),
+    getBanners(),
   ]);
-  const hero = heroList.items[0] ?? popular[0];
+  const slides = banners.length
+    ? banners.map(bannerSlide)
+    : await fallbackSlides(popular);
   const now = serverNow();
 
   return (
     <Container className="space-y-20 pt-6 sm:space-y-24 sm:pt-8">
-      {hero && <Hero product={hero} />}
+      <h1 className="sr-only">nord. — электроника без лишнего</h1>
+      <HeroSlider slides={slides} />
 
       {categories.length > 0 && (
         <section>
@@ -93,36 +96,42 @@ export default async function HomePage() {
   );
 }
 
-function Hero({ product }: { product: ProductListItem }) {
-  const href = `/product/${product.slug}`;
-  return (
-    <section className="grid grid-cols-1 items-center gap-8 overflow-hidden rounded-card bg-surface p-6 sm:p-10 md:grid-cols-12 lg:p-14">
-      <div className="md:col-span-6">
-        <Badge tone="neutral">{product.isFeatured ? "Хит продаж" : "Новинка"}</Badge>
-        <h1 className="mt-5 text-h1 font-semibold text-balance sm:text-display">
-          {product.name}
-        </h1>
-        <p className="mt-4 max-w-md text-base text-muted">
-          {product.description}
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <ButtonLink href={href} variant="accent" size="lg">
-            Купить за {formatPrice(product.price)}
-          </ButtonLink>
-          <ButtonLink href={`${href}#specs`} variant="secondary" size="lg">
-            Подробнее
-          </ButtonLink>
-        </div>
-      </div>
-      <div className="md:col-span-6">
-        <ProductMedia
-          src={product.images[0]?.url ?? null}
-          alt={product.images[0]?.alt ?? product.name}
-          categorySlug={product.category.slug}
-          priority
-          frame="aspect-[4/3]"
-        />
-      </div>
-    </section>
-  );
+function bannerSlide(b: Banner): HeroSlide {
+  const p = b.product;
+  return {
+    key: b.id,
+    badge: b.badge || "Хит продаж",
+    title: b.title || p.name,
+    subtitle: b.subtitle || p.shortDescription || p.description,
+    image: b.image || p.images[0]?.url || null,
+    imageAlt: p.images[0]?.alt ?? p.name,
+    categorySlug: p.category.slug,
+    href: `/product/${p.slug}`,
+    price: p.price,
+  };
+}
+
+/** Пока баннеры не настроены в админке — хит из ноутбуков или популярный товар. */
+async function fallbackSlides(popular: ProductListItem[]) {
+  const laptops = await getProducts({
+    isFeatured: true,
+    categorySlug: "laptops",
+    limit: 1,
+  });
+  const product = laptops.items[0] ?? popular[0];
+  return product ? [productSlide(product)] : [];
+}
+
+function productSlide(p: ProductListItem): HeroSlide {
+  return {
+    key: p.id,
+    badge: p.isFeatured ? "Хит продаж" : "Новинка",
+    title: p.name,
+    subtitle: p.description,
+    image: p.images[0]?.url ?? null,
+    imageAlt: p.images[0]?.alt ?? p.name,
+    categorySlug: p.category.slug,
+    href: `/product/${p.slug}`,
+    price: p.price,
+  };
 }

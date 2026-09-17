@@ -64,6 +64,7 @@ docker compose exec api node dist/seed.js   # создать админа и д�
 | GET | `/categories` | дерево категорий с количеством товаров |
 | GET | `/categories/:slug` | категория с родителем и подкатегориями |
 | GET | `/brands`, `/brands/:slug` | бренды |
+| GET | `/banners` | слайды главной: включённые, с опубликованными товарами, по порядку |
 | GET | `/uploads/:file` | загруженные изображения |
 | GET | `/health` | проверка API и БД |
 
@@ -91,6 +92,9 @@ docker compose exec api node dist/seed.js   # создать админа и д�
 | GET/PATCH/DELETE | `/admin/categories/:id` | получить / изменить / удалить (нельзя, если есть товары или подкатегории → 409) |
 | GET/POST | `/admin/brands` | список / создать |
 | GET/PATCH/DELETE | `/admin/brands/:id` | получить / изменить / удалить (у товаров бренд обнуляется) |
+| GET/POST | `/admin/banners` | слайды главной / создать `{ productId, badge?, title?, subtitle?, image?, isActive? }` (не больше 5 → 409) |
+| GET/PATCH/DELETE | `/admin/banners/:id` | получить / изменить / удалить |
+| PUT | `/admin/banners/order` | `{ ids }` — все id в новом порядке |
 | POST | `/admin/uploads` | `multipart/form-data`, поле `file`: JPEG/PNG/WebP/AVIF до 5 МБ → `{ url }` |
 | DELETE | `/admin/uploads/:filename` | удалить файл (409, если он где-то используется) |
 

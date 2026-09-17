@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { API_URL, ApiError } from "../api";
 import { TOKEN_COOKIE } from "./constants";
-import type { AdminUser, Role } from "./types";
+import type { AdminUser } from "./types";
 
 export async function getToken() {
   return (await cookies()).get(TOKEN_COOKIE)?.value;
@@ -58,10 +58,9 @@ export const getCurrentUser = cache(async (): Promise<AdminUser | null> => {
 });
 
 /** Для страниц и Server Actions: без сессии — на страницу входа. */
-export async function requireUser(...roles: Role[]) {
+export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) redirect("/admin/login");
-  if (roles.length && !roles.includes(user.role)) redirect("/admin");
   return user;
 }
 

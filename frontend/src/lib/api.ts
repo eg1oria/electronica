@@ -1,5 +1,6 @@
 import "server-only";
 import type {
+  Banner,
   Brand,
   CategoryDetails,
   CategoryNode,
@@ -88,4 +89,9 @@ export function getCategory(slug: string) {
 
 export function getBrands() {
   return request<Brand[]>("/brands");
+}
+
+/** Слайды главной; без них главная покажет запасной вариант. */
+export function getBanners() {
+  return request<Banner[]>("/banners").catch(() => [] as Banner[]);
 }

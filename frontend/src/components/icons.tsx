@@ -139,10 +139,22 @@ export const TagIcon = (p: IconProps) => (
   </Icon>
 );
 
-export const UsersIcon = (p: IconProps) => (
+export const SlidesIcon = (p: IconProps) => (
   <Icon {...p}>
-    <circle cx="9" cy="8" r="3.5" />
-    <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.7a3.5 3.5 0 0 1 0 6.6M18.5 14.5A6.5 6.5 0 0 1 21.5 20" />
+    <rect x="3.5" y="5" width="17" height="11" rx="2" />
+    <path d="M9 20h1M12 20h0M14 20h1" />
+  </Icon>
+);
+
+export const ArrowUpIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 19V5M6 11l6-6 6 6" />
+  </Icon>
+);
+
+export const ArrowDownIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 5v14M6 13l6 6 6-6" />
   </Icon>
 );
 
