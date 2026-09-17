@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { ThemeScript } from "@/components/theme-script";
 import "./globals.css";
 
 const inter = Inter({
@@ -18,19 +17,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0b0c" },
-  ],
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    // data-theme выставляет ThemeScript до гидрации
-    <html lang="ru" className={inter.variable} suppressHydrationWarning>
-      <head>
-        <ThemeScript />
-      </head>
+    <html lang="ru" className={inter.variable}>
       <body className="font-sans">{children}</body>
     </html>
   );

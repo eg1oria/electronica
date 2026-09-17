@@ -40,7 +40,7 @@ export function ProductMedia({
           alt={alt}
           loading={priority ? "eager" : "lazy"}
           fetchPriority={priority ? "high" : undefined}
-          className={`h-full w-full object-contain ${inset} mix-blend-multiply dark:mix-blend-normal`}
+          className={`h-full w-full object-contain ${inset} mix-blend-multiply`}
         />
       ) : (
         <DeviceSilhouette kind={deviceKind(categorySlug)} />

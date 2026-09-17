@@ -19,7 +19,6 @@ import {
   TagIcon,
   UsersIcon,
 } from "../icons";
-import { ThemeToggle } from "../theme";
 
 type NavItem = {
   href: string;
@@ -103,7 +102,6 @@ function Footer({ user }: { user: AdminUser }) {
           </p>
           <p className="truncate text-xs text-muted">{user.login}</p>
         </Link>
-        <ThemeToggle />
         <form action={logout}>
           <button
             type="submit"

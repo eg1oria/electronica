@@ -212,7 +212,7 @@ function Slide({
         {/* Мягкое свечение за товаром */}
         <div
           aria-hidden
-          className="absolute inset-[18%] rounded-full bg-accent/[0.06] blur-3xl dark:bg-accent/10"
+          className="absolute inset-[18%] rounded-full bg-accent/[0.06] blur-3xl"
         />
         <div className={animate ? "motion-safe:animate-pop" : undefined}>
           <div className="motion-safe:animate-float">

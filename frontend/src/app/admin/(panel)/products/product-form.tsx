@@ -373,7 +373,7 @@ function ImagesCard({
               <img
                 src={assetUrl(image.url)}
                 alt={image.alt ?? ""}
-                className="h-full w-full object-contain p-3 mix-blend-multiply dark:mix-blend-normal"
+                className="h-full w-full object-contain p-3 mix-blend-multiply"
               />
               {i === 0 && (
                 <span className="absolute top-2 left-2 rounded-full bg-inverse px-2 py-0.5 text-[0.7rem] font-semibold text-inverse-fg">

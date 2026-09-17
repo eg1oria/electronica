@@ -4,7 +4,6 @@ import { getCategories } from "@/lib/api";
 import type { CategoryNode } from "@/lib/types";
 import { HeaderCartLink, HeaderFavoritesLink } from "./cart-buttons";
 import { SearchIcon } from "./icons";
-import { ThemeToggle } from "./theme";
 import { Container } from "./ui";
 
 export function Logo() {
@@ -62,7 +61,6 @@ export async function Header() {
           </nav>
           <SearchForm className="ml-auto hidden w-full max-w-72 md:block" />
           <div className="ml-auto flex items-center gap-1 md:ml-0">
-            <ThemeToggle />
             <HeaderFavoritesLink />
             <span className="ml-1.5">
               <HeaderCartLink />
