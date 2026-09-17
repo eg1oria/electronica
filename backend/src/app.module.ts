@@ -12,7 +12,9 @@ import { HealthController } from './health/health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
+import { SettingsModule } from './settings/settings.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { UsersModule } from './users/users.module';
 import { UPLOAD_DIR, UPLOAD_URL_PREFIX } from './uploads/uploads.constants';
 
 @Module({
@@ -33,11 +35,13 @@ import { UPLOAD_DIR, UPLOAD_URL_PREFIX } from './uploads/uploads.constants';
     }),
     PrismaModule,
     AuthModule,
+    UsersModule,
     CategoriesModule,
     BrandsModule,
     ProductsModule,
     UploadsModule,
     BannersModule,
+    SettingsModule,
     OrdersModule,
   ],
   controllers: [HealthController],

@@ -183,3 +183,16 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
 }
+
+/// Настройки магазина — одна строка с id = 1.
+model Settings {
+  id                  Int      @id @default(1)
+  /// Токен бота от @BotFather. Хранится как есть — им подписываются вызовы API.
+  telegramBotToken    String?
+  /// @username бота, определяется при сохранении токена.
+  telegramBotUsername String?
+  /// Куда слать заказы: личка сотрудника, группа или канал.
+  telegramChatId      String?
+  telegramEnabled     Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
+}

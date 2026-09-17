@@ -14,6 +14,33 @@ export type AdminUser = {
   role: "ADMIN" | "MANAGER";
 };
 
+export type AdminRole = AdminUser["role"];
+
+/** Сотрудник в списке админки — пароль наружу не отдаётся. */
+export type AdminStaff = AdminUser & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const ROLE_LABELS: Record<AdminRole, string> = {
+  ADMIN: "Администратор",
+  MANAGER: "Менеджер",
+};
+
+export const MIN_PASSWORD_LENGTH = 8;
+export const MAX_PASSWORD_LENGTH = 72;
+
+/** Настройки Telegram; сам токен с сервера не приходит — только его хвост. */
+export type TelegramSettings = {
+  enabled: boolean;
+  chatId: string | null;
+  botUsername: string | null;
+  tokenPreview: string | null;
+  updatedAt: string | null;
+};
+
+export type TelegramChat = { id: string; title: string; type: string };
+
 export type AdminProductListItem = ProductListItem & { isActive: boolean };
 export type AdminProductList = Paginated<AdminProductListItem>;
 export type AdminProduct = ProductDetails & { isActive: boolean };

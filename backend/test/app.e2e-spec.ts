@@ -209,4 +209,136 @@ describe('Shop API (e2e)', () => {
       await prisma.product.delete({ where: { id: product.id } });
     }
   });
+
+  it('заводит сотрудника, и менеджеру закрыты разделы администратора', async () => {
+    const server = app.getHttpServer();
+    const login = `e2e-manager-${Date.now()}`;
+    const password = 'manager12345';
+
+    const created = await request(server)
+      .post('/api/admin/users')
+      .auth(token, { type: 'bearer' })
+      .send({ login, password, name: 'Менеджер', role: 'MANAGER' })
+      .expect(201);
+    expect(created.body).toMatchObject({ login, role: 'MANAGER' });
+    expect(created.body.passwordHash).toBeUndefined();
+
+    try {
+      const signed = await request(server)
+        .post('/api/auth/login')
+        .send({ login, password })
+        .expect(200);
+      const managerToken = signed.body.accessToken as string;
+
+      // Каталог менеджеру доступен, сотрудники и настройки — нет.
+      await request(server)
+        .get('/api/admin/products')
+        .auth(managerToken, { type: 'bearer' })
+        .expect(200);
+      await request(server)
+        .get('/api/admin/users')
+        .auth(managerToken, { type: 'bearer' })
+        .expect(403);
+      await request(server)
+        .get('/api/admin/settings/telegram')
+        .auth(managerToken, { type: 'bearer' })
+        .expect(403);
+
+      await request(server)
+        .patch('/api/auth/password')
+        .auth(managerToken, { type: 'bearer' })
+        .send({ currentPassword: 'wrong-password', newPassword: 'manager54321' })
+        .expect(401);
+
+      // Свой пароль: старый токен отзывается, новый выдаётся в ответе.
+      const changed = await request(server)
+        .patch('/api/auth/password')
+        .auth(managerToken, { type: 'bearer' })
+        .send({ currentPassword: password, newPassword: 'manager54321' })
+        .expect(200);
+      await request(server)
+        .get('/api/auth/me')
+        .auth(managerToken, { type: 'bearer' })
+        .expect(401);
+      await request(server)
+        .get('/api/auth/me')
+        .auth(changed.body.accessToken, { type: 'bearer' })
+        .expect(200);
+
+      // Смена роли администратором тоже закрывает сессии сотрудника.
+      await request(server)
+        .patch(`/api/admin/users/${created.body.id}`)
+        .auth(token, { type: 'bearer' })
+        .send({ role: 'ADMIN' })
+        .expect(200);
+      await request(server)
+        .get('/api/auth/me')
+        .auth(changed.body.accessToken, { type: 'bearer' })
+        .expect(401);
+    } finally {
+      await request(server)
+        .delete(`/api/admin/users/${created.body.id}`)
+        .auth(token, { type: 'bearer' })
+        .expect(204);
+    }
+  });
+
+  it('не даёт удалить собственную учётную запись', async () => {
+    const server = app.getHttpServer();
+    const me = await request(server)
+      .get('/api/auth/me')
+      .auth(token, { type: 'bearer' })
+      .expect(200);
+    await request(server)
+      .delete(`/api/admin/users/${me.body.id}`)
+      .auth(token, { type: 'bearer' })
+      .expect(400);
+  });
+
+  it('проверяет настройки Telegram и не отдаёт токен наружу', async () => {
+    const server = app.getHttpServer();
+
+    await request(server)
+      .put('/api/admin/settings/telegram')
+      .auth(token, { type: 'bearer' })
+      .send({ botToken: 'это-не-токен' })
+      .expect(400);
+    // Включить уведомления без бота нельзя.
+    await request(server)
+      .put('/api/admin/settings/telegram')
+      .auth(token, { type: 'bearer' })
+      .send({ enabled: true })
+      .expect(400);
+    await request(server)
+      .put('/api/admin/settings/telegram')
+      .auth(token, { type: 'bearer' })
+      .send({ chatId: 'чат' })
+      .expect(400);
+
+    try {
+      const saved = await request(server)
+        .put('/api/admin/settings/telegram')
+        .auth(token, { type: 'bearer' })
+        .send({ chatId: '123456789' })
+        .expect(200);
+      expect(saved.body).toMatchObject({
+        chatId: '123456789',
+        enabled: false,
+        tokenPreview: null,
+      });
+      expect(saved.body.telegramBotToken).toBeUndefined();
+
+      // Без токена отправлять нечем — понятная ошибка вместо 500.
+      await request(server)
+        .post('/api/admin/settings/telegram/test')
+        .auth(token, { type: 'bearer' })
+        .expect(400);
+    } finally {
+      await request(server)
+        .put('/api/admin/settings/telegram')
+        .auth(token, { type: 'bearer' })
+        .send({ botToken: '', chatId: '', enabled: false })
+        .expect(200);
+    }
+  });
 });

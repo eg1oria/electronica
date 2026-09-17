@@ -6,7 +6,12 @@ import { revalidatePath } from "next/cache";
 import { API_URL, ApiError } from "@/lib/api";
 import { TOKEN_COOKIE, TOKEN_MAX_AGE } from "@/lib/admin/constants";
 import { adminFetch, requireUser } from "@/lib/admin/session";
-import type { ActionState, AdminUser } from "@/lib/admin/types";
+import {
+  MIN_PASSWORD_LENGTH,
+  type ActionState,
+  type AdminUser,
+  type TelegramChat,
+} from "@/lib/admin/types";
 import type { OrderStatus } from "@/lib/types";
 
 /* Вспомогательное */
@@ -54,6 +59,23 @@ async function remove(path: string, listPath: string, toList: boolean) {
 
 const bool = (data: FormData, key: string) => data.get(key) === "on";
 
+/** Пароль не обрезаем: пробелы могут быть его частью. */
+const password = (data: FormData, key: string) => String(data.get(key) ?? "");
+
+/** Запрос без изменения данных: ошибку показываем, кэш не сбрасываем. */
+async function call<T>(
+  run: () => Promise<T>,
+): Promise<{ data: T } | { error: string }> {
+  await requireUser();
+  try {
+    return { data: await run() };
+  } catch (e) {
+    if (!(e instanceof ApiError)) throw e;
+    if (e.status === 401) redirect("/admin/login");
+    return { error: e.message };
+  }
+}
+
 /* Вход и выход */
 
 export async function login(
@@ -80,6 +102,11 @@ export async function login(
     accessToken: string;
     user: AdminUser;
   };
+  await setSessionCookie(accessToken);
+  redirect("/admin");
+}
+
+async function setSessionCookie(accessToken: string) {
   (await cookies()).set(TOKEN_COOKIE, accessToken, {
     httpOnly: true,
     sameSite: "lax",
@@ -87,7 +114,6 @@ export async function login(
     path: "/",
     maxAge: TOKEN_MAX_AGE,
   });
-  redirect("/admin");
 }
 
 export async function logout() {
@@ -291,4 +317,116 @@ export async function updateOrderStatus(id: number, status: OrderStatus) {
   return mutate(() =>
     adminFetch(`/admin/orders/${id}`, { method: "PATCH", json: { status } }),
   );
+}
+
+/* Сотрудники */
+
+export async function saveStaff(
+  id: number | null,
+  _prev: ActionState,
+  data: FormData,
+): Promise<ActionState> {
+  await requireUser();
+  const value = password(data, "password");
+  // При создании пароль обязателен, при правке пустое поле значит «не менять».
+  if ((!id || value) && value.length < MIN_PASSWORD_LENGTH) {
+    return { error: `Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов` };
+  }
+
+  const result = await mutate(() =>
+    adminFetch(id ? `/admin/users/${id}` : "/admin/users", {
+      method: id ? "PATCH" : "POST",
+      json: {
+        login: text(data, "login").toLowerCase(),
+        name: optional(data, "name"),
+        role: text(data, "role"),
+        ...(value ? { password: value } : {}),
+      },
+    }),
+  );
+  if (result?.error) return result;
+  redirect("/admin/users");
+}
+
+export async function deleteStaff(id: number, toList = false) {
+  return remove(`/admin/users/${id}`, "/admin/users", toList);
+}
+
+/** Свой пароль. Старые токены отзываются, поэтому меняем cookie сессии. */
+export async function changeOwnPassword(
+  _prev: ActionState,
+  data: FormData,
+): Promise<ActionState> {
+  const next = password(data, "newPassword");
+  if (next !== password(data, "repeatPassword")) {
+    return { error: "Новый пароль и подтверждение не совпадают" };
+  }
+  if (next.length < MIN_PASSWORD_LENGTH) {
+    return { error: `Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов` };
+  }
+
+  // 401 здесь означает неверный текущий пароль, а не истёкшую сессию.
+  const result = await call(() =>
+    adminFetch<{ accessToken: string }>("/auth/password", {
+      method: "PATCH",
+      json: {
+        currentPassword: password(data, "currentPassword"),
+        newPassword: next,
+      },
+    }),
+  );
+  if ("error" in result) return result;
+  await setSessionCookie(result.data.accessToken);
+  return { ok: true };
+}
+
+/* Уведомления в Telegram */
+
+export async function saveTelegram(
+  _prev: ActionState,
+  data: FormData,
+): Promise<ActionState> {
+  await requireUser();
+  const token = password(data, "botToken").trim();
+  return mutate(() =>
+    adminFetch("/admin/settings/telegram", {
+      method: "PUT",
+      json: {
+        // Пустое поле — оставить сохранённый ранее токен.
+        ...(token ? { botToken: token } : {}),
+        chatId: text(data, "chatId"),
+        enabled: bool(data, "enabled"),
+      },
+    }),
+  );
+}
+
+/** Убирает бота целиком: токен, чат и уведомления. */
+export async function clearTelegram(): Promise<ActionState> {
+  await requireUser();
+  return mutate(() =>
+    adminFetch("/admin/settings/telegram", {
+      method: "PUT",
+      json: { botToken: "", chatId: "", enabled: false },
+    }),
+  );
+}
+
+export async function testTelegram(): Promise<ActionState> {
+  const result = await call(() =>
+    adminFetch("/admin/settings/telegram/test", { method: "POST" }),
+  );
+  return "error" in result ? result : { ok: true };
+}
+
+/** Чаты, которые писали боту, — чтобы не искать chat ID вручную. */
+export async function detectTelegramChats(): Promise<
+  { chats: TelegramChat[] } | { error: string }
+> {
+  const result = await call(() =>
+    adminFetch<TelegramChat[]>("/admin/settings/telegram/chats", {
+      method: "POST",
+    }),
+  );
+  return "error" in result ? result : { chats: result.data };
 }

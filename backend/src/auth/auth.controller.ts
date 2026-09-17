@@ -1,8 +1,9 @@
-import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Patch, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AdminOnly } from './admin.decorator';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './current-user.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import type { AuthUser } from './jwt.strategy';
 
@@ -22,5 +23,16 @@ export class AuthController {
   @AdminOnly()
   me(@CurrentUser() user: AuthUser) {
     return user;
+  }
+
+  /** Свой пароль меняет любой сотрудник; в ответе — новый токен сессии. */
+  @Patch('password')
+  @AdminOnly()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.auth.changePassword(user.id, dto);
   }
 }

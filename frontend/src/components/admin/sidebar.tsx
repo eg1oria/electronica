@@ -14,8 +14,10 @@ import {
   LogoutIcon,
   MenuIcon,
   ReceiptIcon,
+  SettingsIcon,
   SlidesIcon,
   TagIcon,
+  UsersIcon,
 } from "../icons";
 import { ThemeToggle } from "../theme";
 
@@ -23,6 +25,8 @@ type NavItem = {
   href: string;
   label: string;
   icon: ComponentType<{ size?: number }>;
+  /** Раздел только для администратора. */
+  adminOnly?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -32,6 +36,8 @@ const NAV: NavItem[] = [
   { href: "/admin/categories", label: "Категории", icon: FolderIcon },
   { href: "/admin/brands", label: "Бренды", icon: TagIcon },
   { href: "/admin/banners", label: "Баннеры", icon: SlidesIcon },
+  { href: "/admin/users", label: "Сотрудники", icon: UsersIcon, adminOnly: true },
+  { href: "/admin/settings", label: "Настройки", icon: SettingsIcon },
 ];
 
 function AdminLogo() {
@@ -43,14 +49,20 @@ function AdminLogo() {
   );
 }
 
-function Nav({ onNavigate }: { onNavigate?: () => void }) {
+function Nav({
+  role,
+  onNavigate,
+}: {
+  role: AdminUser["role"];
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const isActive = (href: string) =>
     href === "/admin" ? pathname === href : pathname.startsWith(href);
 
   return (
     <nav aria-label="Разделы админки" className="flex flex-col gap-0.5">
-      {NAV.map(({ href, label, icon: Icon }) => {
+      {NAV.filter((item) => !item.adminOnly || role === "ADMIN").map(({ href, label, icon: Icon }) => {
         const active = isActive(href);
         return (
           <Link
@@ -85,10 +97,12 @@ function Footer({ user }: { user: AdminUser }) {
         Открыть магазин
       </Link>
       <div className="flex items-center gap-2 px-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{user.name || "Администратор"}</p>
+        <Link href="/admin/settings" className="min-w-0 flex-1 group">
+          <p className="truncate text-sm font-medium group-hover:text-accent">
+            {user.name || "Администратор"}
+          </p>
           <p className="truncate text-xs text-muted">{user.login}</p>
-        </div>
+        </Link>
         <ThemeToggle />
         <form action={logout}>
           <button
@@ -117,7 +131,7 @@ export function Sidebar({ user }: { user: AdminUser }) {
           <AdminLogo />
         </div>
         <div className="flex-1">
-          <Nav />
+          <Nav role={user.role} />
         </div>
         <Footer user={user} />
       </aside>
@@ -156,7 +170,7 @@ export function Sidebar({ user }: { user: AdminUser }) {
               </button>
             </div>
             <div className="flex-1">
-              <Nav onNavigate={close} />
+              <Nav role={user.role} onNavigate={close} />
             </div>
             <Footer user={user} />
           </aside>

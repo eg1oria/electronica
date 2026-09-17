@@ -11,6 +11,7 @@ import {
   Prisma,
 } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { OrderNotifier } from '../settings/order-notifier.service';
 import {
   CreateOrderDto,
   MAX_ORDER_QTY,
@@ -61,7 +62,10 @@ function mergeItems(items: OrderItemDto[]) {
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifier: OrderNotifier,
+  ) {}
 
   /**
    * Оформление заказа с витрины. Цены берутся из базы, а не от клиента;
@@ -131,7 +135,10 @@ export class OrdersService {
       });
     });
 
-    return serialize(order);
+    const created = serialize(order);
+    // Уведомление в Telegram не ждём: заказ уже принят.
+    void this.notifier.newOrder(created);
+    return created;
   }
 
   async findAll(query: QueryOrdersDto): Promise<Paginated<unknown>> {

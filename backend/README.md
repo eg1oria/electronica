@@ -49,7 +49,10 @@ docker compose exec api node dist/seed.js   # создать админа и д�
 - **Brand** — `name`, `slug`, `logo`, `description`
 - **Order** — `status` (`NEW` → `CONFIRMED` → `SHIPPED` → `COMPLETED`, либо `CANCELLED`), `customerName`, `phone`, `email`, `delivery` (`COURIER` · `PICKUP`), `city`, `address`, `apartment`, `payment` (`ON_DELIVERY` · `INSTALLMENT`), `comment`, `total`
   - **items[]** — снимок товара на момент заказа: `productId` (пусто, если товар удалён), `name`, `sku`, `price`, `qty`
-- **User** — учётная запись админки; администратор создаётся `npm run db:seed` из `ADMIN_LOGIN` / `ADMIN_PASSWORD`
+- **User** — сотрудник админки: `login`, `name`, `role` (`ADMIN` · `MANAGER`), `tokenVersion`. Первый администратор создаётся `npm run db:seed` из `ADMIN_LOGIN` / `ADMIN_PASSWORD`, остальных заводят в разделе «Сотрудники»
+  - `MANAGER` работает с каталогом, баннерами и заказами; `ADMIN` дополнительно управляет сотрудниками и настройками магазина
+  - смена пароля или роли увеличивает `tokenVersion` — выданные раньше токены сразу перестают действовать
+- **Settings** — одна строка с настройками магазина: токен Telegram-бота, его `@username`, чат для уведомлений и флаг `telegramEnabled`
 
 Цены в ответах — числа (`54990.5`). `slug`, если не передан, генерируется из названия (кириллица транслитерируется).
 
@@ -102,6 +105,7 @@ docker compose exec api node dist/seed.js   # создать админа и д�
 | --- | --- | --- |
 | POST | `/auth/login` | `{ login, password }` → `{ accessToken, user }` |
 | GET | `/auth/me` | текущий пользователь |
+| PATCH | `/auth/password` | `{ currentPassword, newPassword }` → `{ accessToken }`; сессии на других устройствах закрываются, текущая получает новый токен |
 
 ### Админка
 
@@ -124,10 +128,32 @@ docker compose exec api node dist/seed.js   # создать админа и д�
 | GET | `/admin/orders/stats` | количество заказов по статусам |
 | GET | `/admin/orders/:id` | заказ с позициями |
 | PATCH | `/admin/orders/:id` | `{ status }`; отмена возвращает товары на склад, отменённый заказ изменить нельзя (400) |
+| GET/POST | `/admin/users` | сотрудники / создать `{ login, password, name?, role? }` (только `ADMIN`) |
+| GET/PATCH/DELETE | `/admin/users/:id` | получить / изменить (`login`, `name`, `role`, `password`) / удалить |
+| GET/PUT | `/admin/settings/telegram` | настройки уведомлений / сохранить `{ botToken?, chatId?, enabled? }` |
+| POST | `/admin/settings/telegram/test` | отправить тестовое сообщение в чат |
+| POST | `/admin/settings/telegram/chats` | чаты, которые недавно писали боту, — чтобы выбрать `chatId` |
 | POST | `/admin/uploads` | `multipart/form-data`, поле `file`: JPEG/PNG/WebP/AVIF до 5 МБ → `{ url }` |
 | DELETE | `/admin/uploads/:filename` | удалить файл (409, если он где-то используется) |
 
 Фото, которые больше нигде не используются (после удаления товара, замены `images`, смены картинки категории или логотипа бренда), удаляются с диска автоматически.
+
+### Сотрудники
+
+- Разделы `/admin/users/*` и `/admin/settings/*` доступны только роли `ADMIN`, остальные админские эндпоинты — обеим ролям.
+- Нельзя удалить себя, изменить себе роль и снять роль с последнего администратора → `400`.
+- Пароль — не короче 8 символов; наружу отдаются только `id`, `login`, `name`, `role` и даты.
+
+### Уведомления о заказах в Telegram
+
+Настраивается из админки (раздел «Настройки»), переменные окружения не нужны:
+
+1. `@BotFather` → `/newbot` → скопировать токен.
+2. `PUT /admin/settings/telegram` с `{ "botToken": "123456789:AA..." }` — токен проверяется через `getMe`, сохраняется `@username` бота. Неверный токен → `400`; если Telegram недоступен, токен всё равно сохранится (в логе будет предупреждение).
+3. Отправить боту `/start` (или добавить его в группу) и вызвать `POST /admin/settings/telegram/chats`, чтобы получить список чатов с их `id`.
+4. Сохранить `chatId` и `enabled: true` — включить уведомления без токена и чата нельзя (`400`).
+
+Каждый новый заказ уходит в чат: номер, покупатель, состав, сумма, доставка и оплата. Отправка не блокирует оформление: ошибка Telegram только пишется в лог. Токен наружу не отдаётся — в ответе только `tokenPreview` вида `123456789:••••ab12`. Пустая строка в `botToken` стирает токен, `{ "botToken": "", "chatId": "", "enabled": false }` полностью отключает бота.
 
 ### Пример создания товара
 
